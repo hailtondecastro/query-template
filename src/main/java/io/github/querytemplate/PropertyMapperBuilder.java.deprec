@@ -1,0 +1,18 @@
+package io.github.querytemplate;
+
+/**
+ * Builder for {@link PropertyMapper}.
+ */
+public class PropertyMapperBuilder<Q> {
+	public static <SQ> PropertyMapperBuilder<SQ> of(Class<SQ> queryClass) {
+		return new PropertyMapperBuilder<SQ>();
+	}
+	
+	private PropertyMapperBuilder() {
+	}
+	
+	public <P> PropertyMapper<Q, P> build(String filterPrp, Class<P> propertyClass) {
+		PropertyMapper<Q, P> propertyMapper = new PropertyMapper<>(filterPrp);
+		return propertyMapper;
+	}
+}
