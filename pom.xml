@@ -38,6 +38,8 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<version.maven.compiler.plugin>3.8.1</version.maven.compiler.plugin>
+        <version.maven.source.plugin>3.2.1</version.maven.source.plugin>
+        <version.maven.javadoc.plugin>3.2.0</version.maven.javadoc.plugin>
 		<version.java.source>11</version.java.source>
 		<version.java.target>11</version.java.target>
 		<maven.compiler.release>11</maven.compiler.release>
@@ -90,6 +92,35 @@
 					<target>${version.java.target}</target>
 				</configuration>
 			</plugin>
+            <plugin>
+                <inherited>true</inherited>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${version.maven.source.plugin}</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${version.maven.javadoc.plugin}</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
 		</plugins>
 	</build>
 

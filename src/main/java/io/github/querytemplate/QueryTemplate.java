@@ -96,6 +96,8 @@ import java.util.Set;
  * [query_helper] then the use of this [query_helper] will be conditioned to the
  * respective parameter being 'filled'; in that case the operator can be included
  * in the final query ('and', 'or' or 'no operator').<br>
+ * 
+ * @param <Q> the type of the query. It is platform-specific (e.g., String for SQL, CriteriaQuery for JPA, etc.). It is not used internally, it is only for strong typing and IDE code completion.
  */
 public interface QueryTemplate<Q> {
 	void setUp();
@@ -103,7 +105,7 @@ public interface QueryTemplate<Q> {
 	/**
 	 * Assigns values to the parameters based on the fill state..
 	 *
-	 * @param filterObject the filter object.
+	 * @param state the state of the query template.
 	 * @param query        the query to set the parameters on.
 	 */
 	void setParamQuery(QueryTemplateState<Q> state,
@@ -111,7 +113,6 @@ public interface QueryTemplate<Q> {
 
 	/**
 	 * Assembles the query according to the parameters that are filled.
-	 * @param <Q>
 	 *
 	 * @param filter the filter object.
 	 * @return the assembled query.
@@ -119,30 +120,10 @@ public interface QueryTemplate<Q> {
 	QueryTemplateState<Q> buildQueryState(Object filter);
 
 	/**
-	 * Returns the usable parameters of the query, i.e. the parameters that appear in
-	 * it.
-	 *
-	 * @return the usable parameters.
-	 */
-	Set<String> getUsableParameters();
-	
-	/**
-	 * Internal method to set the parameters of a query. This method is used for nested templates.<br>
-	 * 
-	 * Assigns values to the parameters based on the fill state..
-	 *
-	 * @param filterObject the filter object.
-	 * @param query        the query to set the parameters on.
-	 */
-	void setParamQuery(QueryTemplateState<Q> state, Q query, 
-		Map<Integer, Action> positionalParameterActions);
-
-	/**
-	 * Internal method to create a QueryTemplateSpec with a parent. This is used for nested templates.
-	 * @param <SQ>
-	 * @param config
-	 * @param parent
-	 * @return
+	 * Internal method to create a QueryTemplate with a parent. This is used for nested templates.
+	 * @param <SQ> the type of the query. It is platform-specific (e.g., String for SQL, CriteriaQuery for JPA, etc.). It is not used internally, it is only for strong typing and IDE code completion.
+	 * @param config the configuration for the QueryTemplate.
+	 * @return QueryTemplate instance with the given configuration.
 	 */
 	public static <SQ> QueryTemplate<SQ> of(QueryTemplateConfig<SQ> config) {
 		return new QueryTemplateDefault<>(config);

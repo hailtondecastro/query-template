@@ -3,6 +3,7 @@ package io.github.querytemplate;
 /**
  * Verifies whether a property of a filter ({@link Object}) is filled.
  */
+@FunctionalInterface
 public interface FillVerifier {
 
     /**

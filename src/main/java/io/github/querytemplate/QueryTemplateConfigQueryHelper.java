@@ -45,7 +45,7 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	}
 	
 	@Override
-	public <P> QueryTemplateConfig.PropertyMapperConfig<Q, P> addMapper(String filterPrp,
+	public <P> PropertyMapperConfig<Q, P> addMapper(String filterPrp,
 		Class<P> propertyClass) {
 		throw new QueryTemplateException("QueryHelper cannot add mappers. Use the parent QueryTemplateConfig to add mappers.");
 	}
@@ -266,7 +266,7 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	}
 
 	@Override
-	public Map<String, QueryTemplateConfig.PropertyMapperConfig<Q, ?>> getMappersConfigMap() {
+	public Map<String, PropertyMapperConfig<Q, ?>> getMappersConfigMap() {
 		return this.parent.getMappersConfigMap();
 	}
 

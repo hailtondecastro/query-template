@@ -15,19 +15,19 @@ public class FillVerifiers {
      * Filled if: value != null.
      */
     public static final FillVerifier NOTNULL =
-        new FillVerifierByDelegate((filter, filterPrp) -> {
+        (filter, filterPrp) -> {
             try {
                 return PropertyUtils.getProperty(filter, filterPrp) != null;
             } catch (Exception e) {
                 throw new QueryTemplateException("filterPrp: '" + filterPrp + "'", e);
             }
-        });
+        };
 
     /**
      * Filled if: value != null AND value != 0.
      */
     public static final FillVerifier NUMBER_NOTZERO =
-        new FillVerifierByDelegate((filter, filterPrp) -> {
+        (filter, filterPrp) -> {
             try {
                 Object n = PropertyUtils.getProperty(filter, filterPrp);
                 if (n == null) {
@@ -38,27 +38,27 @@ public class FillVerifiers {
             } catch (Exception e) {
                 throw new QueryTemplateException("filterPrp: '" + filterPrp + "'", e);
             }
-        });
+        };
 
     /**
      * Used when the evaluation is only meant to decide whether to include a piece
      * of Query, but there is no parameter value to be filled.
      */
     public static final FillVerifier FRAGMENT_INCLUSION =
-        new FillVerifierByDelegate((filter, filterPrp) -> {
+        (filter, filterPrp) -> {
             try {
                 FragmentInclusion fragmentInclusion = (FragmentInclusion) PropertyUtils.getProperty(filter, filterPrp);
                 return fragmentInclusion == FragmentInclusion.INCLUDE;
             } catch (Exception e) {
                 throw new QueryTemplateException("filterPrp: '" + filterPrp + "'", e);
             }
-        });
+        };
 
     /**
      * Filled if: value != null AND value.toString().length() != 0.
      */
     public static final FillVerifier STRING_NOTEMPTY =
-        new FillVerifierByDelegate((filter, filterPrp) -> {
+        (filter, filterPrp) -> {
             try {
                 Object o = PropertyUtils.getProperty(filter, filterPrp);
                 if (o == null) {
@@ -69,13 +69,13 @@ public class FillVerifiers {
             } catch (Exception e) {
                 throw new QueryTemplateException("filterPrp: '" + filterPrp + "'", e);
             }
-        });
+        };
 
     /**
      * Filled if: value != null AND ((Collection) value).size() &gt; 0.
      */
     public static final FillVerifier COLLECTION_NOTEMPTY =
-        new FillVerifierByDelegate((filter, filterPrp) -> {
+        (filter, filterPrp) -> {
             try {
                 Collection<?> clObj = (Collection<?>) PropertyUtils.getProperty(filter, filterPrp);
                 if (clObj == null) {
@@ -86,13 +86,13 @@ public class FillVerifiers {
             } catch (Exception e) {
                 throw new QueryTemplateException("filterPrp: '" + filterPrp + "'", e);
             }
-        });
+        };
 
     /**
      * Filled if: value != null AND java.lang.reflect.Array.getLength(value) &gt; 0.
      */
     public static final FillVerifier ARRAY_NOTEMPTY =
-        new FillVerifierByDelegate((filter, filterPrp) -> {
+        (filter, filterPrp) -> {
             try {
                 Object objs = PropertyUtils.getProperty(filter, filterPrp);
                 if (objs == null) {
@@ -103,5 +103,5 @@ public class FillVerifiers {
             } catch (Exception e) {
                 throw new QueryTemplateException("filterPrp: '" + filterPrp + "'", e);
             }
-        });
+        };
 }

@@ -70,16 +70,15 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
     	
 		this.mappersMap = new LinkedHashMap<>();
     	for (String propertyNameItem : this.config.getMappersConfigMap().keySet()) {
-    		QueryTemplateConfig.PropertyMapperConfig<Q, Object> mapperConfig = (QueryTemplateConfig.PropertyMapperConfig<Q, Object>) config.getMappersConfigMap().get(propertyNameItem);
+    		PropertyMapperConfig<Q, Object> mapperConfig = (PropertyMapperConfig<Q, Object>) config.getMappersConfigMap().get(propertyNameItem);
     		PropertyMapper<Q, Object> mapper = 
     				new PropertyMapper<>(propertyNameItem);
     		mapper
-    			.assignNamedParameterCallback(mapperConfig.getAssignNamedParameterCallback())
-    			.assignPositionalParameterCallback(mapperConfig.getAssignPositionalParameterCallback())
+    			.onFilled(mapperConfig.getOnFilledNamed())
+    			.onFilled(mapperConfig.getOnFilledPositional())
     			.fillVerifier(mapperConfig.getFillVerifier())
     			.unpackListItems(mapperConfig.isUnpackListItems())
     			.repeater(mapperConfig.isRepeater());
-    		//mapperConfig.getFillVerifier(), mapperConfig.getAssignNamedParameterCallback(), mapperConfig.getAssignPositionalParameterCallback(), mapperConfig.isUnpackListItems(), mapperConfig.isRepeater());
     		this.mappersMap.put(mapper.getFilterPrp(), mapper);
     	}
     	
@@ -234,17 +233,17 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                         int repeatIndex = 0;
                         for (Object valueItem : valueColl) {
                         	if (!this.config.isConvertNamedToPositionalParameters()) {
-                        		if (mapperItemCasted.getAssignNamedParameterCallback() != null) {
-                                	mapperItemCasted.getAssignNamedParameterCallback().accept(query, mapperItemCasted.getFilterPrp() + "_" + repeatIndex, valueItem);
+                        		if (mapperItemCasted.getOnFilledNamed() != null) {
+                                	mapperItemCasted.getOnFilledNamed().accept(query, mapperItemCasted.getFilterPrp() + "_" + repeatIndex, valueItem);
                                 }
                         	} else {
-								if (mapperItemCasted.getAssignPositionalParameterCallback() != null) {
+								if (mapperItemCasted.getOnFilledPositional() != null) {
 									List<Integer> parameterPositions = state
 											.getPropertyMapperItemIndexToParameterPositions().get(mapperItemCasted)
 											.get(repeatIndex);
 									for (Integer parameterPosition : parameterPositions) {
 										// delaying the execution of the parameter setting to avoid issues with the order of execution and potential side effects
-										positionalParameterActions.put(parameterPosition, () -> mapperItemCasted.getAssignPositionalParameterCallback().accept(query, parameterPosition, valueItem));
+										positionalParameterActions.put(parameterPosition, () -> mapperItemCasted.getOnFilledPositional().accept(query, parameterPosition, valueItem));
 									}
 								}
                         	}
@@ -254,15 +253,15 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                         // nothing
                     } else {
                     	if (!this.config.isConvertNamedToPositionalParameters()) {
-                    		if (mapperItemCasted.getAssignNamedParameterCallback() != null) {
-                    			mapperItemCasted.getAssignNamedParameterCallback().accept(query, mapperItemCasted.getFilterPrp(), value);
+                    		if (mapperItemCasted.getOnFilledNamed() != null) {
+                    			mapperItemCasted.getOnFilledNamed().accept(query, mapperItemCasted.getFilterPrp(), value);
                     		}                    		
                     	} else {
-                    		if (mapperItemCasted.getAssignPositionalParameterCallback() != null) {
+                    		if (mapperItemCasted.getOnFilledPositional() != null) {
                     			List<Integer> parameterPositions = state.getPropertyMapperToParameterPositions().get(mapperItemCasted);
                     			for (Integer parameterPosition : parameterPositions) {
                     				// delaying the execution of the parameter setting to avoid issues with the order of execution and potential side effects
-                    				positionalParameterActions.put(parameterPosition, () -> mapperItemCasted.getAssignPositionalParameterCallback().accept(query, parameterPosition, value));
+                    				positionalParameterActions.put(parameterPosition, () -> mapperItemCasted.getOnFilledPositional().accept(query, parameterPosition, value));
                     			}
                     		}
                         }
@@ -293,7 +292,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
     /**
      * Assigns values to the parameters based on the fill state..
      *
-     * @param filterObject the filter object.
+     * @param positionalParameterActions a map of parameter positions to actions that set the parameter values on the query. This is used to delay the execution of setting the parameters until all actions are collected, ensuring that they are executed in order of their target parameter positions.
+     * @param state        the state of the query template.
      * @param query        the query to set the parameters on.
      */
     @Override
@@ -315,8 +315,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
     /**
      * Assigns values to the parameters based on the fill state..
      *
-     * @param filterObject the filter object.
-     * @param query        the query to set the parameters on.
+     * @param state 	the state of the query template.
+     * @param query 	the query to set the parameters on.
      */
     @Override
 	public void setParamQuery(QueryTemplateState<Q> state, Q query) {
@@ -411,8 +411,6 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 
     /**
      * Assembles the query according to the parameters that are filled.
-     * @param <Q>
-     *
      * @param filter the filter object.
      * @return the assembled query.
      */

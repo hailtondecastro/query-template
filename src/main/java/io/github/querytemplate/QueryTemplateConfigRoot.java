@@ -9,12 +9,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
- * @param <Q>
+ * Root configuration for the QueryTemplate. It holds the configuration for 
+ * the query template, including the tokens used in the query, the mappers 
+ * for the filter properties, and any query helpers.
  */
 public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(QueryTemplateConfigRoot.class);
+    @SuppressWarnings("unused")
+	private static final Logger LOG = LoggerFactory.getLogger(QueryTemplateConfigRoot.class);
 
     Pattern filtersToken = Pattern.compile(QueryTemplateConfig.FILTERS_TOKEN);
 	Pattern whereToken = Pattern.compile(QueryTemplateConfig.WHERE_TOKEN);
@@ -55,11 +57,11 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 		this.queryTextOriginal = queryText;
     }
     
-    private Map<String, QueryTemplateConfig.PropertyMapperConfig<Q, ?>> mappersConfigMap;
+    private Map<String, PropertyMapperConfig<Q, ?>> mappersConfigMap;
     
 	@Override
-	public <P> QueryTemplateConfig.PropertyMapperConfig<Q, P> addMapper(String filterPrp, Class<P> propertyClass) {
-		QueryTemplateConfig.PropertyMapperConfig<Q, P> propertyMapperConfig = new QueryTemplateConfig.PropertyMapperConfig<>(this);
+	public <P> PropertyMapperConfig<Q, P> addMapper(String filterPrp, Class<P> propertyClass) {
+		PropertyMapperConfig<Q, P> propertyMapperConfig = new PropertyMapperConfigDefault<>(this);
 		this.mappersConfigMap.put(filterPrp, propertyMapperConfig);
 		return propertyMapperConfig.filterPrp(filterPrp);
 	}
@@ -70,23 +72,12 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 		return this;
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Override
 	public <P> PropertyMapperConfig<Q, P> modifyMapper(String filterPrp, Class<P> propertyClass) {
 		return (PropertyMapperConfig<Q, P>) this.mappersConfigMap.get(filterPrp);
 	}
 	
-    /**
-     * Adds another {@link QueryTemplateConfigRoot} inside the current instance. Inside the
-     * marked query there is something like:
-     *
-     * <pre>
-     * [Q:RelArrolamento.DetalheHelper]
-     * </pre>
-     *
-     * @param key         the query helper key.
-     * @param queryTextOriginal the query helper.
-     * @return this instance.
-     */
     @Override
 	public QueryTemplateConfig<Q> addQueryHelper(String key, String queryTextOriginal) {
         if (queryTextOriginal == null) {
@@ -102,136 +93,78 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
         return this;
     }
 
-    /**
-     * 
-     * @param targetReservedWordPositionalParameterMarker the target reserved word for positional parameter markers. Default is "?".
-     * @return
-     */
 	@Override
 	public QueryTemplateConfig<Q> targetReservedWordPositionalParameterMarker(String targetReservedWordPositionalParameterMarker) {
 		this.targetReservedWordPositionalParameterMarker = targetReservedWordPositionalParameterMarker;
 		return this;
 	}
 
-	/**
-	 * @param convertNamedToPositionalParameters whether to convert named parameters to positional parameters.
-	 * @return
-	 */
 	@Override
 	public QueryTemplateConfig<Q> convertNamedToPositionalParameters(boolean convertNamedToPositionalParameters) {
 		this.convertNamedToPositionalParameters = convertNamedToPositionalParameters;
 		return this;
 	}
 
-	/**
-	 * @param targetReservedWordWhere see {@link QueryTemplateConfig#TARGET_RESERVED_WORD_WHERE}.
-	 * @return
-	 */
 	@Override
 	public QueryTemplateConfig<Q> targetReservedWordWhere(String targetReservedWordWhere) {
 		this.targetReservedWordWhere = targetReservedWordWhere;
 		return this;
 	}
 
-	/**
-	 * @param targetReservedWordAnd see {@link QueryTemplateConfig#TARGET_RESERVED_WORD_AND}.
-	 * @return
-	 */
 	@Override
 	public QueryTemplateConfig<Q> targetReservedWordAnd(String targetReservedWordAnd) {
 		this.targetReservedWordAnd = targetReservedWordAnd;
 		return this;
 	}
 
-	/**
-	 * @param targetReservedWordOr see {@link QueryTemplateConfig#TARGET_RESERVED_WORD_OR}.
-	 * @return
-	 */
 	@Override
 	public QueryTemplateConfig<Q> targetReservedWordOr(String targetReservedWordOr) {
 		this.targetReservedWordOr = targetReservedWordOr;
 		return this;
 	}
 
-	/**
-	 * @param targetReservedWordOpenParenthesis see {@link QueryTemplateConfig#TARGET_RESERVED_WORD_OPEN_PARENTHESIS}.
-	 * @return
-	 */
 	@Override
 	public QueryTemplateConfig<Q> targetReservedWordOpenParenthesis(String targetReservedWordOpenParenthesis) {
 		this.targetReservedWordOpenParenthesis = targetReservedWordOpenParenthesis;
 		return this;
 	}
 
-	/**
-	 * @param targetReservedWordCloseParenthesis see {@link QueryTemplateConfig#TARGET_RESERVED_WORD_CLOSE_PARENTHESIS}.
-	 * @return
-	 */
 	@Override
 	public QueryTemplateConfig<Q> targetReservedWordCloseParenthesis(String targetReservedWordCloseParenthesis) {
 		this.targetReservedWordCloseParenthesis = targetReservedWordCloseParenthesis;
 		return this;
 	}
 	
-	/**
-	 * @param targetItemListSeparatorMarker the separator marker for list items.
-	 *                                      Default is {@link QueryTemplateConfig#TARGET_ITEM_LIST_SEPARATOR_MARKER}.
-	 * @return
-	 */
 	@Override
 	public QueryTemplateConfig<Q> targetItemListSeparatorMarker(String targetItemListSeparatorMarker) {
 		this.targetItemListSeparatorMarker = targetItemListSeparatorMarker;
 		return this;
 	}
 
-	/**
-	 * @param parameterUsagePrefix the prefix used for parameter usage. Default is ":".
-	 * @return
-	 */
 	@Override
 	public QueryTemplateConfig<Q> parameterUsagePrefix(String parameterUsagePrefix) {
 		this.parameterUsagePrefix = parameterUsagePrefix;
 		return this;
 	}
 
-	/**
-	 * @param parameterNamePattern see {@link QueryTemplateConfig#PARAMETER_NAME_PATTERN}.
-	 * @return
-	 */
 	@Override
 	public QueryTemplateConfig<Q> parameterNamePattern(String parameterNamePattern) {
 		this.parameterNamePattern = parameterNamePattern;
 		return this;
 	}
 	
-	/**
-	 * @param parameterBasePosition the base index for parameters. Default is 1.
-	 * @return
-	 */
 	@Override
 	public QueryTemplateConfig<Q> parameterBasePosition(int parameterBasePosition) {
 		this.parameterBasePosition = parameterBasePosition;
 		return this;
 	}
 
-	/**
-	 * Sets the filters token pattern. See {@link QueryTemplateConfig#FILTERS_TOKEN} for the default value.
-	 * 
-	 * @param filtersToken the filters token pattern.
-	 * @return this instance for method chaining.
-	 */
 	@Override
 	public QueryTemplateConfig<Q> filtersToken(String filtersToken) {
 		this.filtersToken = Pattern.compile(filtersToken);
 		return this;
 	}
 	
-	/**
-	 * Sets the where token pattern. See {@link QueryTemplateConfig#WHERE_TOKEN} for the default value.
-	 * 
-	 * @param whereToken the where token pattern.
-	 * @return this instance for method chaining.
-	 */
 	@Override
 	public QueryTemplateConfig<Q> whereToken(String whereToken) {
 		this.whereToken = Pattern.compile(whereToken);
@@ -366,7 +299,7 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	}
 
 	@Override
-	public Map<String, QueryTemplateConfig.PropertyMapperConfig<Q, ?>> getMappersConfigMap() {
+	public Map<String, PropertyMapperConfig<Q, ?>> getMappersConfigMap() {
 		return mappersConfigMap;
 	}
 
@@ -469,24 +402,4 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	public QueryTemplateConfig<Q> getParent() {
 		return null;
 	}
-	
-//	this.filtersToken = Pattern.compile(filtersTokenParam);
-//    this.whereToken = Pattern.compile(whereTokenParam);
-//    this.andToken = Pattern.compile(andTokenParam);
-//    this.orToken = Pattern.compile(orTokenParam);
-//    this.noOperatorToken = Pattern.compile(noOperatorTokenParam);
-//    this.openParenthesisToken = Pattern.compile(openParenthesisTokenParam);
-//    this.closeParenthesisToken = Pattern.compile(closeParenthesisTokenParam);
-//    this.extraToken = Pattern.compile(extraTokenParam);
-//    this.paramToken = Pattern.compile(paramTokenParam);
-//    this.repeatToken = Pattern.compile(repeatTokenParam);
-//    this.criterionToken = Pattern.compile(criterionTokenParam);
-//    this.paramDelimiterToken = Pattern.compile(paramDelimiterTokenParam);
-//    this.criterionDelimiterToken = Pattern.compile(criterionDelimiterTokenParam);
-//    this.queryHelperToken = Pattern.compile(queryHelperTokenParam);
-//    this.escapeCharacter = escapeCharacterParam;
-//    this.reservedAnyParam = reservedAnyParamParam;
-//    this.sqlHqlQueryOriginal = sqlHqlQuery;
-//    
-//    this.compactSqlHqlQuery = compactSqlHqlQueryParam;
 }

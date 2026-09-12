@@ -1,7 +1,12 @@
 package io.github.querytemplate;
 
+/**
+ * Functional interface for assigning a named parameter to a query.
+ * @param <Q> The type of the query object.
+ * @param <P> The type of the property value to be assigned to the parameter.
+ */
 @FunctionalInterface
-public interface AssignNamedParameterDelegate<Q, P> {
+public interface AssignNamedParameter<Q, P> {
 
 	/**
 	 * Sets the parameter value in the query.

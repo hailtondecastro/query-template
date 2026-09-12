@@ -11,8 +11,8 @@ public class PropertyMapper<Q, P> {
     //private String entityPrp;
     private FillVerifier fillVerifier;
     //private Type type = null;
-    private AssignNamedParameterDelegate<Q, P> assignNamedParameterCallback = null;
-    private AssignPositionalParameterDelegate<Q, P> assignPositionalParameterCallback = null;
+    private AssignNamedParameter<Q, P> onFilledNamed = null;
+    private AssignPositionalParameter<Q, P> onFilledPositional = null;
     //private boolean parameterAsList = false;
     private boolean unpackListItems = false;
     private boolean isRepeater = false;
@@ -89,21 +89,21 @@ public class PropertyMapper<Q, P> {
 //        return this;
 //    }
 
-	public AssignNamedParameterDelegate<Q, P> getAssignNamedParameterCallback() {
-		return assignNamedParameterCallback;
+	public AssignNamedParameter<Q, P> getOnFilledNamed() {
+		return onFilledNamed;
 	}
 
-	public PropertyMapper<Q, P> assignNamedParameterCallback(AssignNamedParameterDelegate<Q, P> assignNamedParameterCallback) {
-		this.assignNamedParameterCallback = assignNamedParameterCallback;
+	public PropertyMapper<Q, P> onFilled(AssignNamedParameter<Q, P> onFilledNamed) {
+		this.onFilledNamed = onFilledNamed;
 		return this;
 	}
 
-	public AssignPositionalParameterDelegate<Q, P> getAssignPositionalParameterCallback() {
-		return assignPositionalParameterCallback;
+	public AssignPositionalParameter<Q, P> getOnFilledPositional() {
+		return onFilledPositional;
 	}
 	
-	public PropertyMapper<Q, P> assignPositionalParameterCallback(AssignPositionalParameterDelegate<Q, P> assignPositionalParameterCallback) {
-		this.assignPositionalParameterCallback = assignPositionalParameterCallback;
+	public PropertyMapper<Q, P> onFilled(AssignPositionalParameter<Q, P> onFilledPositional) {
+		this.onFilledPositional = onFilledPositional;
 		return this;
 	}
 	
@@ -142,8 +142,8 @@ public class PropertyMapper<Q, P> {
 	 * the value items will be used to repeat a part of the query multiple times.<br>
 	 * If it is set to <code>true</code>, {@link #unpackListItems(boolean)} are set 
 	 * to <code>false</code> automatically.
-	 * @param isRepeater
-	 * @return
+	 * @param isRepeater The value indicating whether the property is a repeater or not.
+	 * @return This PropertyMapper instance for method chaining.
 	 */
 	public PropertyMapper<Q, P> repeater(boolean isRepeater) {
 		if (isRepeater) {

@@ -1,7 +1,12 @@
 package io.github.querytemplate;
 
+/**
+ * Functional interface for assigning a positional parameter to a query.
+ * @param <Q> The type of the query object.
+ * @param <P> The type of the property value to be assigned to the parameter.
+ */
 @FunctionalInterface
-public interface AssignPositionalParameterDelegate<Q, P> {
+public interface AssignPositionalParameter<Q, P> {
 
 	/**
 	 * Sets the value of a parameter in the query.

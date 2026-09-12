@@ -23,25 +23,25 @@ public class QueryTemplateTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(QueryTemplateTest.class);
 
-	private <P> AssignNamedParameterDelegate<Query<MyEntity>, P> simpleAssignNamedParameterCallback() {
+	private <P> AssignNamedParameter<Query<MyEntity>, P> simpleOnFilledNamed() {
 		return (query,
 			name,
 			value) -> query.setParameter(name, value);
 	}
 	
-	private <P> AssignPositionalParameterDelegate<Query<MyEntity>, P> simpleAssignPositionalParameterCallback() {
+	private <P> AssignPositionalParameter<Query<MyEntity>, P> simpleOnFilledPositional() {
 		return (query,
 			position,
 			value) -> query.setParameter(position, value);
 	}
 	
-	private <P> AssignNamedParameterDelegate<Query<MyEntity>, P> simpleAssignNamedParameterCallback(Type type) {
+	private <P> AssignNamedParameter<Query<MyEntity>, P> simpleOnFilledNamed(Type type) {
 		return (query,
 			name,
 			value) -> query.setParameter(name, value, type);
 	}
 	
-	private <P> AssignPositionalParameterDelegate<Query<MyEntity>, P> simpleAssignPositionalParameterCallback(Type type) {
+	private <P> AssignPositionalParameter<Query<MyEntity>, P> simpleOnFilledPositional(Type type) {
 		return (query,
 			position,
 			value) -> query.setParameter(position, value, type);
@@ -53,70 +53,36 @@ public class QueryTemplateTest {
 //            value) -> query.setParameterList(name, (Collection) value);
 //	}
 	
-	private <PI> AssignNamedParameterDelegate<Query<MyEntity>, Collection<PI>> simpleAssignNamedParameterListCallback(Type itemType) {
+	private <PI> AssignNamedParameter<Query<MyEntity>, Collection<PI>> simpleOnFilledListNamed(Type itemType) {
 		return (query,
             name,
             value) -> query.setParameterList(name, (Collection) value, itemType);
 	}
 	
-	private <PI> AssignPositionalParameterDelegate<Query<MyEntity>, Collection<PI>> simpleAssignPositionalParameterListCallback(Type itemType) {
+	private <PI> AssignPositionalParameter<Query<MyEntity>, Collection<PI>> simpleOnFilledListPositional(Type itemType) {
 		return (query,
 			position,
 			value) -> query.setParameterList(position, (Collection) value, itemType);
 	}
-//	private <PI> AssignNamedParameterDelegate<Query<MyEntity>, PI[]> simpleNamedParameterArraySetter(Type itemType) {
-//		return (query,
-//            name,
-//            value) -> query.setParameterList(name, (PI[]) value, itemType);
-//	}
-//	private <PI> AssignNamedParameterDelegate<Query<MyEntity>, PI[]> simpleNamedParameterArraySetter() {
-//		return (query,
-//            name,
-//            value) -> query.setParameterList(name, (PI[]) value);
-//	}
 	
     private void configPropertyMappers(QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig) {
     	queryTemplateConfig
     		.clearMappers()
-    			.addMapper("filterPrp1", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).parameterCallback(this.simpleAssignNamedParameterCallback(StandardBasicTypes.STRING)).parameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.STRING)).done()                                                                             
-    			.addMapper("filterPrp2", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).parameterCallback(this.simpleAssignNamedParameterCallback(StandardBasicTypes.STRING)).parameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.STRING)).done()                                                                             
-    			.addMapper("filterPrp3", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).parameterCallback(this.simpleAssignNamedParameterCallback(StandardBasicTypes.STRING)).parameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.STRING)).done()                                                                        
-    			.addMapper("filterPrp4", new SimpleTypeToken<Collection<String>>(){}.getRawType()).fillVerifier(FillVerifiers.COLLECTION_NOTEMPTY).parameterCallback(this.simpleAssignNamedParameterCallback(StandardBasicTypes.STRING)).parameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.STRING)).unpackListItems(true).done()   
-    			.addMapper("filterPrp5", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).parameterCallback(this.simpleAssignNamedParameterCallback(StandardBasicTypes.STRING)).parameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.STRING)).done()
-    			.addMapper("filterPrp6", MyProperty.class).fillVerifier(FillVerifiers.NOTNULL).parameterCallback(this.simpleAssignNamedParameterCallback()).parameterCallback(this.simpleAssignPositionalParameterCallback()).done()
+    			.addMapper("filterPrp1", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).onFilled(this.simpleOnFilledNamed(StandardBasicTypes.STRING)).onFilled(this.simpleOnFilledPositional(StandardBasicTypes.STRING)).done()                                                                             
+    			.addMapper("filterPrp2", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).onFilled(this.simpleOnFilledNamed(StandardBasicTypes.STRING)).onFilled(this.simpleOnFilledPositional(StandardBasicTypes.STRING)).done()                                                                             
+    			.addMapper("filterPrp3", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).onFilled(this.simpleOnFilledNamed(StandardBasicTypes.STRING)).onFilled(this.simpleOnFilledPositional(StandardBasicTypes.STRING)).done()                                                                        
+    			.addMapper("filterPrp4", new SimpleTypeToken<Collection<String>>(){}.getRawType()).fillVerifier(FillVerifiers.COLLECTION_NOTEMPTY).onFilled(this.simpleOnFilledNamed(StandardBasicTypes.STRING)).onFilled(this.simpleOnFilledPositional(StandardBasicTypes.STRING)).unpackListItems(true).done()   
+    			.addMapper("filterPrp5", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).onFilled(this.simpleOnFilledNamed(StandardBasicTypes.STRING)).onFilled(this.simpleOnFilledPositional(StandardBasicTypes.STRING)).done()
+    			.addMapper("filterPrp6", MyProperty.class).fillVerifier(FillVerifiers.NOTNULL).onFilled(this.simpleOnFilledNamed()).onFilled(this.simpleOnFilledPositional()).done()
     			.addMapper("filterPrp7", new SimpleTypeToken<Collection<String>>(){}.getRawType())
 	        		.fillVerifier(FillVerifiers.COLLECTION_NOTEMPTY)
 	        		.repeater(true)
-	        		.parameterCallback(this.simpleAssignNamedParameterCallback(StandardBasicTypes.INTEGER))
-	        		.parameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.INTEGER))
+	        		.onFilled(this.simpleOnFilledNamed(StandardBasicTypes.INTEGER))
+	        		.onFilled(this.simpleOnFilledPositional(StandardBasicTypes.INTEGER))
 	        		.done()
-	        	.addMapper("filterPrp8", Integer[].class).fillVerifier(FillVerifiers.ARRAY_NOTEMPTY).parameterCallback(this.simpleAssignNamedParameterCallback(StandardBasicTypes.INTEGER)).parameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.INTEGER)).repeater(true).done()
+	        	.addMapper("filterPrp8", Integer[].class).fillVerifier(FillVerifiers.ARRAY_NOTEMPTY).onFilled(this.simpleOnFilledNamed(StandardBasicTypes.INTEGER)).onFilled(this.simpleOnFilledPositional(StandardBasicTypes.INTEGER)).repeater(true).done()
     		;
     }
-
-//    private List<PropertyMapper<Query<MyEntity>, ?>> newPropertyMappersPositionalParameters() {
-//        List<PropertyMapper<Query<MyEntity>, ?>> mappers = new ArrayList<>();
-//        //                Filter property   Fill verifier
-//        PropertyMapperBuilder<Query<MyEntity>> pmBuilder = 
-//        		PropertyMapperBuilder.of(new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
-//        AssignPositionalParameterDelegate<Query<MyEntity>, ?> simpleAssignPositionalParameterCallback = 
-//        		(query, name, value) -> query.setParameter(name, value);
-//        		AssignPositionalParameterDelegate<Query<MyEntity>, ?> simpleAssignPositionalParameterListCallback = 
-//                		(query, name, value) -> query.setParameterList(name, (Collection) value);
-//        mappers.add(pmBuilder.build("filterPrp1", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).assignPositionalParameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.STRING)));
-//        mappers.add(pmBuilder.build("filterPrp2", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).assignPositionalParameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.STRING)));
-//        mappers.add(pmBuilder.build("filterPrp3", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).assignPositionalParameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.STRING)));
-//        mappers.add(pmBuilder.build("filterPrp4", new SimpleTypeToken<Collection<String>>(){}.getRawType()).fillVerifier(FillVerifiers.COLLECTION_NOTEMPTY).assignPositionalParameterCallback(this.simpleAssignPositionalParameterListCallback(StandardBasicTypes.STRING)));
-//        mappers.add(pmBuilder.build("filterPrp5", String.class).fillVerifier(FillVerifiers.STRING_NOTEMPTY).assignPositionalParameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.STRING)));
-//        mappers.add(pmBuilder.build("filterPrp6", MyProperty.class).fillVerifier(FillVerifiers.NOTNULL).assignPositionalParameterCallback(this.simpleAssignPositionalParameterCallback()));
-//        mappers.add(pmBuilder.build("filterPrp7", new SimpleTypeToken<Collection<String>>(){}.getRawType())
-//        		.fillVerifier(FillVerifiers.COLLECTION_NOTEMPTY)
-//        		.repeater(true)
-//        		.assignPositionalParameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.INTEGER))
-//		);
-//        mappers.add(pmBuilder.build("filterPrp8", Integer[].class).fillVerifier(FillVerifiers.ARRAY_NOTEMPTY).assignPositionalParameterCallback(this.simpleAssignPositionalParameterCallback(StandardBasicTypes.INTEGER)).repeater(true));
-//        return mappers;
-//    }
     
     private static String QUERY_BUILD_QUERY_WITHOUT_PARENTHESIS = 
             "/* This comment shows how to place: a backslash using escape (\\\\); an opening bracket (\\[).*/ \n" +
@@ -198,8 +164,8 @@ public class QueryTemplateTest {
         
         queryTemplateConfig
         	.modifyMapper("filterPrp4", new SimpleTypeToken<Collection<String>>(){}.getRawType())
-        		.parameterCallback(this.simpleAssignNamedParameterListCallback(StandardBasicTypes.STRING))
-        		.parameterCallback(this.simpleAssignPositionalParameterListCallback(StandardBasicTypes.STRING))
+        		.onFilled(this.simpleOnFilledListNamed(StandardBasicTypes.STRING))
+        		.onFilled(this.simpleOnFilledListPositional(StandardBasicTypes.STRING))
         		.unpackListItems(false)
     		.done();
         
