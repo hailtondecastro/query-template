@@ -123,12 +123,44 @@
             </plugin>
 		</plugins>
 	</build>
-    <distributionManagement>
-        <repository>
-            <id>central</id>
-            <name>Central Portal Releases</name>
-            <url>https://sonatype.com</url>
-        </repository>
-    </distributionManagement>
+
+	<profiles>
+		<!-- Activated on release/deploy: signs artifacts and publishes to the
+		     Maven Central Portal (central.sonatype.com). Requires a Central Portal
+		     user token (as username/password) and a GPG key. No distributionManagement
+		     is needed: the plugin uploads to the Portal directly. -->
+		<profile>
+			<id>release</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>3.2.4</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.sonatype.central</groupId>
+						<artifactId>central-publishing-maven-plugin</artifactId>
+						<version>0.7.0</version>
+						<extensions>true</extensions>
+						<configuration>
+							<publishingServerId>central</publishingServerId>
+							<autoPublish>true</autoPublish>
+							<waitUntil>published</waitUntil>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>
