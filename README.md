@@ -50,7 +50,7 @@ mvn clean verify
 | `QueryTemplateState<Q>` | Result of `buildQueryState(filter)`: exposes the final `getQueryString()` and the parameter bookkeeping. |
 | `PropertyMapperConfig` (via `addMapper` / `modifyMapper`) | Maps a filter property to a `FillVerifier`, a parameter-binding callback, and flags (`unpackListItems`, `repeater`). |
 | `FillVerifier` / `FillVerifiers` | Decides whether a property is considered "filled". Ready-made verifiers: `NOTNULL`, `NUMBER_NOTZERO`, `STRING_NOTEMPTY`, `COLLECTION_NOTEMPTY`, `ARRAY_NOTEMPTY`, `FRAGMENT_INCLUSION`. |
-| `AssignNamedParameterDelegate<Q,P>` / `AssignPositionalParameterDelegate<Q,P>` | Your callback that actually binds a value onto `Q` — this is what decouples the library from any specific query API. |
+| `AssignNamedParameter<Q,P>` / `AssignPositionalParameter<Q,P>` | Your callback that actually binds a value onto `Q` — this is what decouples the library from any specific query API. |
 | `FragmentInclusion` | Enum (`INCLUDE` / `DO_NOT_INCLUDE`) to include a fragment without binding any value. |
 | `SimpleTypeToken<T>` | Super-type-token helper to pass generic types, e.g. `new SimpleTypeToken<Query<Employee>>(){}.getRawType()`. |
 | `PropertyUtils` | Reads a bean property via its getter using reflection. |
@@ -98,11 +98,11 @@ QueryTemplateConfig<Query<Employee>> config =
 config
     .addMapper("name", String.class)
         .fillVerifier(FillVerifiers.STRING_NOTEMPTY)
-        .parameterCallback((Query<Employee> q, String p, String v) -> q.setParameter(p, v))
+        .onFilled((Query<Employee> q, String p, String v) -> q.setParameter(p, v))
         .done()
     .addMapper("minAge", Integer.class)
         .fillVerifier(FillVerifiers.NOTNULL)
-        .parameterCallback((Query<Employee> q, String p, Integer v) -> q.setParameter(p, v))
+        .onFilled((Query<Employee> q, String p, Integer v) -> q.setParameter(p, v))
         .done();
 
 QueryTemplate<Query<Employee>> template = QueryTemplate.of(config);
@@ -130,7 +130,7 @@ QueryTemplateConfig<Query<Employee>> config =
 
 config.addMapper("name", String.class)
     .fillVerifier(FillVerifiers.STRING_NOTEMPTY)
-    .parameterCallback((Query<Employee> q, int pos, String v) -> q.setParameter(pos, v))
+    .onFilled((Query<Employee> q, int pos, String v) -> q.setParameter(pos, v))
     .done();
 
 // finalSql uses '?' markers; setParamQuery binds by 1-based position.
@@ -145,14 +145,14 @@ config.addMapper("name", String.class)
 config.addMapper("ids", new SimpleTypeToken<Collection<Long>>(){}.getRawType())
     .fillVerifier(FillVerifiers.COLLECTION_NOTEMPTY)
     .unpackListItems(true)
-    .parameterCallback((Query<Employee> q, String p, Long v) -> q.setParameter(p, v))
+    .onFilled((Query<Employee> q, String p, Long v) -> q.setParameter(p, v))
     .done();
 // -> e.id in (:ids_0, :ids_1)
 
 // (b) packed -> keep a single :ids; bind the whole collection at once
 config.modifyMapper("ids", new SimpleTypeToken<Collection<Long>>(){}.getRawType())
     .unpackListItems(false)
-    .parameterCallback((Query<Employee> q, String p, Collection<Long> v) -> q.setParameterList(p, v))
+    .onFilled((Query<Employee> q, String p, Collection<Long> v) -> q.setParameterList(p, v))
     .done();
 // -> e.id in (:ids)
 ```
@@ -164,7 +164,7 @@ config.modifyMapper("ids", new SimpleTypeToken<Collection<Long>>(){}.getRawType(
 config.addMapper("codes", new SimpleTypeToken<Collection<Integer>>(){}.getRawType())
     .fillVerifier(FillVerifiers.COLLECTION_NOTEMPTY)
     .repeater(true)
-    .parameterCallback((Query<Employee> q, String p, Integer v) -> q.setParameter(p, v))
+    .onFilled((Query<Employee> q, String p, Integer v) -> q.setParameter(p, v))
     .done();
 // -> e.code = :codes_0  or  e.code = :codes_1  ...
 ```
