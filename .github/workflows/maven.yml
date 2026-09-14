@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ "main", "master" ]
   release:
-    types: [published] # This ensures it runs only when the release is finalized 
+    types: [edited] # This ensures it runs only when the release is finalized 
 
 jobs:
   build:    
