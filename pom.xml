@@ -123,5 +123,12 @@
             </plugin>
 		</plugins>
 	</build>
+    <distributionManagement>
+        <repository>
+            <id>central</id>
+            <name>Central Portal Releases</name>
+            <url>https://sonatype.com</url>
+        </repository>
+    </distributionManagement>
 
 </project>
