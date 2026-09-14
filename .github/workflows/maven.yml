@@ -5,8 +5,7 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  release:
-    types: [edited] # This ensures it runs only when the release is finalized 
+  release: 
 
 jobs:
   build:    
