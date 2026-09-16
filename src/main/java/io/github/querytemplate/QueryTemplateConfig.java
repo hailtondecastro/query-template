@@ -627,7 +627,7 @@ public interface QueryTemplateConfig<Q> {
 	boolean isCompactQueryText();
 
 	/**
-	 * Gets the original query text before any processing. See {@link #getQueryText()} for the processed query text.
+	 * Gets the original query text before any processing. See {@link #getQueryTextOriginal()} for the processed query text.
 	 * 
 	 * @return the original query text.
 	 */
