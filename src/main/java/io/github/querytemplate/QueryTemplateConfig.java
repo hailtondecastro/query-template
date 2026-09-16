@@ -43,25 +43,25 @@ public interface QueryTemplateConfig<Q> {
 	 */
 	String EXTRA_TOKEN = "\\[extra\\]";
 	/**
-	 * OBS: Use the reserved word '$any$' at the beginning of the parameter list to
+	 * OBS: Use the reserved word '$any$' at the beginning of the properties list to
 	 * consider the criterion filled with at least one parameter instead of all of
 	 * them.<br> 
 	 * Value: <code>"\\$any\\$"</code>.
 	 */
-	String RESERVED_ANY_PARAM = "\\$any\\$";
+	String RESERVED_ANY_PROPERTY = "\\$any\\$";
 	/**
-	 * Token with the names of the parameters (property in the filter) separated by
+	 * Token with the names of the properties separated by
 	 * comma, surrounded by the parameter delimiters. All the parameters must be
 	 * filled for the criterion to be included.<br>
 	 * Value: <code>"\\[[a-zA-Z0-9|,|!|\\$| ]+\\]"</code>.
 	 */
-	String PARAM_TOKEN = "\\[[a-zA-Z0-9|,|!|\\$| ]+\\]";
+	String PROPERTIES_TOKEN = "\\[[a-zA-Z0-9|,|!|\\$| ]+\\]";
 	/** Repeats the sentence once for each element in the array. */
 	String REPEAT_TOKEN = "\\[repeat\\]";
 	/** Default token for the criterion. */
 	String CRITERION_TOKEN = "\\[[^\\]]*\\]";
-	/** Default regular expression to remove the parameter and criterion delimiters. */
-	String PARAM_DELIMITER_TOKEN = "\\[|\\]";
+	/** Default regular expression to remove the properties and criterion delimiters. */
+	String PROPERTIES_DELIMITER_TOKEN = "\\[|\\]";
 	/** Default regular expression to remove the criterion delimiters. */
 	String CRITERION_DELIMITER_TOKEN = "\\[|\\]";
 	/** Reused query, supports QueryTemplate "helpers". */
@@ -271,6 +271,34 @@ public interface QueryTemplateConfig<Q> {
 	QueryTemplateConfig<Q> whereToken(String whereToken);
 
 	/**
+	 * Sets the properties token pattern. See {@link #PROPERTIES_TOKEN} for the
+	 * default value.
+	 * 
+	 * @param propertiesToken the properties token pattern.
+	 * @return This instance for method chaining.
+	 */
+	QueryTemplateConfig<Q> propertiesToken(String propertiesToken);
+	
+	/**
+	 * Sets the repeat token pattern. See {@link #REPEAT_TOKEN} for the default
+	 * value.
+	 * 
+	 * @param repeatToken the repeat token pattern.
+	 * @return This instance for method chaining.
+	 */
+	QueryTemplateConfig<Q> repeatToken(String repeatToken);
+	
+	/**
+	 * Sets the query helper token pattern. See {@link #QUERY_HELPER_TOKEN} for the
+	 * default value.
+	 * 
+	 * @param queryHelperToken the query helper token pattern.
+	 * @return This instance for method chaining.
+	 */
+	QueryTemplateConfig<Q> queryHelperToken(String queryHelperToken);
+	
+	
+	/**
 	 * Sets the and token pattern. See {@link #AND_TOKEN} for the default value.
 	 * 
 	 * @param andToken the and token pattern.
@@ -328,15 +356,15 @@ public interface QueryTemplateConfig<Q> {
 	 * @return This instance for method chaining.
 	 */
 	QueryTemplateConfig<Q> criterionToken(String criterionToken);
-
+	
 	/**
 	 * Sets the parameter delimiter token pattern. See
-	 * {@link #PARAM_DELIMITER_TOKEN} for the default value.
+	 * {@link #PROPERTIES_DELIMITER_TOKEN} for the default value.
 	 * 
-	 * @param paramDelimiterToken the parameter delimiter token pattern.
+	 * @param propertiesDelimiterToken the parameter delimiter token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> paramDelimiterToken(String paramDelimiterToken);
+	QueryTemplateConfig<Q> propertiesDelimiterToken(String propertiesDelimiterToken);
 
 	/**
 	 * Sets the criterion delimiter token pattern. See
@@ -355,6 +383,15 @@ public interface QueryTemplateConfig<Q> {
 	 * @return This instance for method chaining.
 	 */
 	QueryTemplateConfig<Q> escapeCharacter(String escapeCharacter);
+	
+	/**
+	 * Sets the reserved word for `any` property markers. See
+	 * {@link #RESERVED_ANY_PROPERTY} for the default value.
+	 * 
+	 * @param reservedAnyProperty the reserved word for `any` parameter markers.
+	 * @return This instance for method chaining.
+	 */
+	QueryTemplateConfig<Q> reservedAnyProperty(String reservedAnyProperty);
 
 	/**
 	 * Sets whether to compact the query text. If true, the query text will be
@@ -380,86 +417,86 @@ public interface QueryTemplateConfig<Q> {
 	QueryTemplateConfig<Q> getParent();
 
 	/**
-	 * Gets the filters token pattern.
+	 * Gets the filters token pattern. See {@link #FILTERS_TOKEN} for the default value.
 	 * 
 	 * @return the filters token pattern.
 	 */
 	Pattern getFiltersToken();
 
 	/**
-	 * Gets the where token pattern.
+	 * Gets and token pattern. See {@link #AND_TOKEN} for the default value.
 	 * 
-	 * @return the where token pattern.
+	 * @return the and token pattern.
 	 */
 	Pattern getAndToken();
 
 	/**
-	 * Gets the and token pattern.
+	 * Gets the or token pattern. See {@link #OR_TOKEN} for the default value.
 	 * 
-	 * @return the and token pattern.
+	 * @return the or token pattern.
 	 */
 	Pattern getOrToken();
 
 	/**
-	 * Gets the or token pattern.
+	 * Gets the `no operator` token pattern. See {@link #NO_OPERATOR_TOKEN} for the default value.`
 	 * 
-	 * @return the or token pattern.
+	 * @return the `no operator` token pattern.
 	 */
 	Pattern getNoOperatorToken();
 
 	/**
-	 * Gets the no operator token pattern.
+	 * Gets the open parenthesis token pattern. See {@link #OPEN_PARENTHESIS_TOKEN} for the default value.
 	 * 
-	 * @return the no operator token pattern.
+	 * @return the open parenthesis token pattern.
 	 */
 	Pattern getOpenParenthesisToken();
 
 	/**
-	 * Gets the open parenthesis token pattern.
+	 * Gets the close parenthesis token pattern. See {@link #CLOSE_PARENTHESIS_TOKEN} for the default value.
 	 * 
-	 * @return the open parenthesis token pattern.
+	 * @return the close parenthesis token pattern.
 	 */
 	Pattern getCloseParenthesisToken();
 
 	/**
-	 * Gets the close parenthesis token pattern.
+	 * Gets the extra token pattern. See {@link #EXTRA_TOKEN} for the default value.
 	 * 
-	 * @return the close parenthesis token pattern.
+	 * @return the extra token pattern.
 	 */
 	Pattern getExtraToken();
 
 	/**
-	 * Gets the extra token pattern.
+	 * Gets the criterion token pattern. See {@link #CRITERION_TOKEN} for the default value.
 	 * 
-	 * @return the extra token pattern.
+	 * @return the criterion token pattern.
 	 */
 	Pattern getCriterionToken();
 
 	/**
-	 * Gets the criterion token pattern.
+	 * Gets the properties delimiter token pattern. See {@link #PROPERTIES_DELIMITER_TOKEN} for the default value.
 	 * 
 	 * @return the criterion token pattern.
 	 */
-	Pattern getParamDelimiterToken();
+	Pattern getPropertiesDelimiterToken();
 
 	/**
-	 * Gets the parameter delimiter token pattern.
+	 * Gets the criterion delimiter token pattern. See {@link #CRITERION_DELIMITER_TOKEN} for the default value.
 	 * 
-	 * @return the parameter delimiter token pattern.
+	 * @return the criterion delimiter token pattern.
 	 */
 	Pattern getCriterionDelimiterToken();
 
 	/**
-	 * Gets the criterion delimiter token pattern.
+	 * Gets the escape character. See {@link #ESCAPE_CHARACTER} for the default value.
 	 * 
-	 * @return the criterion delimiter token pattern.
+	 * @return the escape character.
 	 */
 	String getEscapeCharacter();
 
 	/**
-	 * Gets whether to compact the query text.
+	 * Gets the map of property mappers configurations. The key is the filter property name, and the value is the corresponding PropertyMapperConfig.
 	 * 
-	 * @return whether to compact the query text.
+	 * @return the map of property mappers configurations.
 	 */
 	Map<String, PropertyMapperConfig<Q, ?>> getMappersConfigMap();
 
@@ -471,126 +508,126 @@ public interface QueryTemplateConfig<Q> {
 	Map<String, QueryTemplateConfig<Q>> getQueryHelpers();
 
 	/**
-	 * Gets the target reserved word for "where".
+	 * Gets the target reserved word for "where". See {@link #TARGET_RESERVED_WORD_WHERE} for the default value.
 	 * 
 	 * @return the target reserved word for "where".
 	 */
 	String getTargetReservedWordWhere();
 
 	/**
-	 * Gets the target reserved word for "and".
+	 * Gets the where token pattern. See {@link #WHERE_TOKEN} for the default value.
 	 * 
 	 * @return the target reserved word for "and".
 	 */
 	Pattern getWhereToken();
 
 	/**
-	 * Gets the target reserved word for "or".
+	 * Gets the properties token pattern. See {@link #PROPERTIES_TOKEN} for the default value.
 	 * 
-	 * @return the target reserved word for "or".
+	 * @return the properties token pattern.
 	 */
-	Pattern getParamToken();
+	Pattern getPropertiesToken();
 
 	/**
-	 * Gets the target reserved word for open parenthesis.
+	 * Gets the repeat token pattern. See {@link #REPEAT_TOKEN} for the default value.
 	 * 
-	 * @return the target reserved word for open parenthesis.
+	 * @return the repeat token pattern.
 	 */
 	Pattern getRepeatToken();
 
 	/**
-	 * Gets the target reserved word for close parenthesis.
+	 * Gets the query helper token pattern. See {@link #QUERY_HELPER_TOKEN} for the default value.
 	 * 
-	 * @return the target reserved word for close parenthesis.
+	 * @return the query helper token pattern.
 	 */
 	Pattern getQueryHelperToken();
 
 	/**
-	 * Gets the target reserved word for positional parameter markers.
+	 * Gets the reserved word for `any` property markers. See {@link #RESERVED_ANY_PROPERTY} for the default value.
 	 * 
-	 * @return the target reserved word for positional parameter markers.
+	 * @return the reserved word for `any` parameter markers.
 	 */
-	String getReservedAnyParam();
+	String getReservedAnyProperty();
 
 	/**
-	 * Gets the separator marker for list items.
+	 * Gets the target reserved word for "and". See {@link #TARGET_RESERVED_WORD_AND} for the default value.
 	 * 
-	 * @return the separator marker for list items.
+	 * @return the target reserved word for "and".
 	 */
 	String getTargetReservedWordAnd();
 
 	/**
-	 * Gets the target reserved word for "or".
+	 * Gets the target reserved word for "or". See {@link #TARGET_RESERVED_WORD_OR} for the default value.
 	 * 
 	 * @return the target reserved word for "or".
 	 */
 	String getTargetReservedWordOr();
 
 	/**
-	 * Gets the target reserved word for open parenthesis.
+	 * Gets the target reserved word for open parenthesis. See {@link #TARGET_RESERVED_WORD_OPEN_PARENTHESIS} for the default value.
 	 * 
 	 * @return the target reserved word for open parenthesis.
 	 */
 	String getTargetReservedWordOpenParenthesis();
 
 	/**
-	 * Gets the target reserved word for close parenthesis.
+	 * Gets the target reserved word for close parenthesis. See {@link #TARGET_RESERVED_WORD_CLOSE_PARENTHESIS} for the default value.
 	 * 
 	 * @return the target reserved word for close parenthesis.
 	 */
 	String getTargetReservedWordCloseParenthesis();
 
 	/**
-	 * Gets the target reserved word for positional parameter markers.
+	 * Gets the target reserved word for positional parameter markers. See {@link #TARGET_RESERVED_WORD_POSITIONAL_PARAMETER_MARKER} for the default value.
 	 * 
 	 * @return the target reserved word for positional parameter markers.
 	 */
 	String getTargetReservedWordPositionalParameterMarker();
 
 	/**
-	 * Gets the separator marker for list items.
+	 * Gets the separator marker for list items. See {@link #TARGET_ITEM_LIST_SEPARATOR_MARKER} for the default value.
 	 * 
 	 * @return the separator marker for list items.
 	 */
 	String getTargetItemListSeparatorMarker();
 
 	/**
-	 * Gets whether to convert named parameters to positional parameters.
+	 * Gets whether to convert named parameters to positional parameters. See {@link #convertNamedToPositionalParameters(boolean)} for more information.
 	 * 
 	 * @return whether to convert named parameters to positional parameters.
 	 */
 	boolean isConvertNamedToPositionalParameters();
 
 	/**
-	 * Gets the prefix used for parameter usage.
+	 * Gets the prefix used for parameter usage. See {@link #parameterUsagePrefix(String)} for more information.
 	 * 
 	 * @return the prefix used for parameter usage.
 	 */
 	String getParameterUsagePrefix();
 
 	/**
-	 * Gets the pattern used for parameter names.
+	 * Gets the pattern used for parameter names. See {@link #parameterNamePattern(String)} for more information. 
 	 * 
 	 * @return the pattern used for parameter names.
 	 */
 	String getParameterNamePattern();
 
 	/**
-	 * Gets the base index for parameters.
+	 * Gets the base index for parameters. See {@link #parameterBasePosition(int)} for more information.
 	 * 
 	 * @return the base index for parameters.
 	 */
 	int getParameterBasePosition();
 
 	/**
-	 * Gets whether to compact the query text.
+	 * Gets whether to compact the query text. See {@link #compactQueryText(boolean)} for more information.
 	 * 
 	 * @return whether to compact the query text.
 	 */
 	boolean isCompactQueryText();
 
 	/**
-	 * Gets the original query text before any processing.
+	 * Gets the original query text before any processing. See {@link #getQueryText()} for the processed query text.
 	 * 
 	 * @return the original query text.
 	 */

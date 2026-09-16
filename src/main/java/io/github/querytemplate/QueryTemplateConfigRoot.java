@@ -26,14 +26,14 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	Pattern openParenthesisToken = Pattern.compile(QueryTemplateConfig.OPEN_PARENTHESIS_TOKEN);
 	Pattern closeParenthesisToken = Pattern.compile(QueryTemplateConfig.CLOSE_PARENTHESIS_TOKEN);
 	Pattern extraToken = Pattern.compile(QueryTemplateConfig.EXTRA_TOKEN);
-	Pattern paramToken = Pattern.compile(QueryTemplateConfig.PARAM_TOKEN);
+	Pattern propertiesToken = Pattern.compile(QueryTemplateConfig.PROPERTIES_TOKEN);
 	Pattern repeatToken = Pattern.compile(QueryTemplateConfig.REPEAT_TOKEN);
 	Pattern criterionToken = Pattern.compile(QueryTemplateConfig.CRITERION_TOKEN);
-	Pattern paramDelimiterToken = Pattern.compile(QueryTemplateConfig.PARAM_DELIMITER_TOKEN);
+	Pattern propertiesDelimiterToken = Pattern.compile(QueryTemplateConfig.PROPERTIES_DELIMITER_TOKEN);
 	Pattern criterionDelimiterToken = Pattern.compile(QueryTemplateConfig.CRITERION_DELIMITER_TOKEN);
 	Pattern queryHelperToken = Pattern.compile(QueryTemplateConfig.QUERY_HELPER_TOKEN);
 	String escapeCharacter = QueryTemplateConfig.ESCAPE_CHARACTER;
-	String reservedAnyParam = QueryTemplateConfig.RESERVED_ANY_PARAM;
+	String reservedAnyProperty = QueryTemplateConfig.RESERVED_ANY_PROPERTY;
 	String targetReservedWordWhere = QueryTemplateConfig.TARGET_RESERVED_WORD_WHERE;
 	String targetReservedWordAnd = QueryTemplateConfig.TARGET_RESERVED_WORD_AND;
 	String targetReservedWordOr = QueryTemplateConfig.TARGET_RESERVED_WORD_OR;
@@ -172,6 +172,24 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	}
 	
 	@Override
+	public QueryTemplateConfig<Q> propertiesToken(String propertiesToken) {
+		this.propertiesToken = Pattern.compile(propertiesToken);
+		return this;
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q> repeatToken(String repeatToken) {
+		this.repeatToken = Pattern.compile(repeatToken);
+		return this;
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q> queryHelperToken(String queryHelperToken) {
+		this.queryHelperToken = Pattern.compile(queryHelperToken);
+		return this;
+	}
+	
+	@Override
 	public QueryTemplateConfig<Q> andToken(String andToken) {
 		this.andToken = Pattern.compile(andToken);
 		return this;
@@ -214,8 +232,8 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> paramDelimiterToken(String paramDelimiterToken) {
-		this.paramDelimiterToken = Pattern.compile(paramDelimiterToken);
+	public QueryTemplateConfig<Q> propertiesDelimiterToken(String propertiesDelimiterToken) {
+		this.propertiesDelimiterToken = Pattern.compile(propertiesDelimiterToken);
 		return this;
 	}
 	
@@ -228,6 +246,12 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	@Override
 	public QueryTemplateConfig<Q> escapeCharacter(String escapeCharacter) {
 		this.escapeCharacter = escapeCharacter;
+		return this;
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q> reservedAnyProperty(String reservedAnyProperty) {
+		this.reservedAnyProperty = reservedAnyProperty;
 		return this;
 	}
 	
@@ -284,8 +308,8 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	}
 
 	@Override
-	public Pattern getParamDelimiterToken() {
-		return paramDelimiterToken;
+	public Pattern getPropertiesDelimiterToken() {
+		return propertiesDelimiterToken;
 	}
 
 	@Override
@@ -319,8 +343,8 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	}
 
 	@Override
-	public Pattern getParamToken() {
-		return paramToken;
+	public Pattern getPropertiesToken() {
+		return propertiesToken;
 	}
 
 	@Override
@@ -334,8 +358,8 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	}
 
 	@Override
-	public String getReservedAnyParam() {
-		return reservedAnyParam;
+	public String getReservedAnyProperty() {
+		return reservedAnyProperty;
 	}
 
 	@Override

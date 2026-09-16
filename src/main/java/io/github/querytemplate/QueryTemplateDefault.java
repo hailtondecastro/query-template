@@ -41,7 +41,9 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
     private String queryTextEscapedSubs = "";
     
     //private List<PropertyMapper<Q, ?>> mappers = new ArrayList<>();
-    private Map<String, PropertyMapper<Q, ?>> mappersMap;
+    //private Map<String, PropertyMapper<Q, ?>> mappersMap;
+    private Map<String, PropertyMapper<Q, ?>> mappersByParamNameMap;
+    private Map<String, PropertyMapper<Q, ?>> mappersByPropertyNameMap;
     
     //private String sqlHqlQueryOriginal;
     
@@ -68,18 +70,21 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 	public void setUp() {
     	String queryText = this.config.getQueryTextOriginal();
     	
-		this.mappersMap = new LinkedHashMap<>();
+		this.mappersByParamNameMap = new LinkedHashMap<>();
+		this.mappersByPropertyNameMap = new LinkedHashMap<>();
     	for (String propertyNameItem : this.config.getMappersConfigMap().keySet()) {
     		PropertyMapperConfig<Q, Object> mapperConfig = (PropertyMapperConfig<Q, Object>) config.getMappersConfigMap().get(propertyNameItem);
     		PropertyMapper<Q, Object> mapper = 
     				new PropertyMapper<>(propertyNameItem);
     		mapper
+    			.parameterName(mapperConfig.getParameterName())
     			.onFilled(mapperConfig.getOnFilledNamed())
     			.onFilled(mapperConfig.getOnFilledPositional())
     			.fillVerifier(mapperConfig.getFillVerifier())
     			.unpackListItems(mapperConfig.isUnpackListItems())
     			.repeater(mapperConfig.isRepeater());
-    		this.mappersMap.put(mapper.getFilterPrp(), mapper);
+    		this.mappersByParamNameMap.put(mapper.getParameterName(), mapper);
+    		this.mappersByPropertyNameMap.put(mapper.getFilterPrp(), mapper);
     	}
     	
         if (this.compactQueryText) {
@@ -90,7 +95,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 
         this.splitterIntoPartsPattern = "(?s)" + this.config.getFiltersToken() + "|" + this.config.getWhereToken() + "|" + this.config.getAndToken() + "|" + this.config.getOrToken()
                 + "|" + this.config.getNoOperatorToken() + "|" + this.config.getRepeatToken() + "|" + this.config.getOpenParenthesisToken() + "|"
-                + this.config.getCloseParenthesisToken() + "|" + this.config.getExtraToken() + "|" + this.config.getParamToken() + "|" + this.config.getCriterionToken();
+                + this.config.getCloseParenthesisToken() + "|" + this.config.getExtraToken() + "|" + this.config.getPropertiesToken() + "|" + this.config.getCriterionToken();
         Pattern pt = Pattern.compile(this.splitterIntoPartsPattern);
 
         Map<String, String> escapeMap = new LinkedHashMap<>();
@@ -210,8 +215,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      *                         contained in this set will be used.
      */
     void setParamQueryNonRecursive(QueryTemplateState<Q> state, Q query, Map<Integer, Action> positionalParameterActions) {
-        for (String mapperItemKey : this.mappersMap.keySet()) {
-        	PropertyMapper<Q, ?> mapperItem = this.mappersMap.get(mapperItemKey);
+        for (String mapperItemKey : this.mappersByParamNameMap.keySet()) {
+        	PropertyMapper<Q, ?> mapperItem = this.mappersByParamNameMap.get(mapperItemKey);
         	PropertyMapper<Q, Object> mapperItemCasted = (PropertyMapper<Q, Object>) mapperItem;
             // Tests whether the parameter is used in the query and whether it is filled.
             if (usableParameters.contains(mapperItemCasted.getFilterPrp())
@@ -233,8 +238,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                         int repeatIndex = 0;
                         for (Object valueItem : valueColl) {
                         	if (!this.config.isConvertNamedToPositionalParameters()) {
-                        		if (mapperItemCasted.getOnFilledNamed() != null) {
-                                	mapperItemCasted.getOnFilledNamed().accept(query, mapperItemCasted.getFilterPrp() + "_" + repeatIndex, valueItem);
+                        		if (mapperItemCasted.getParameterName() != null) {
+                                	mapperItemCasted.getOnFilledNamed().accept(query, mapperItemCasted.getParameterName() + "_" + repeatIndex, valueItem);
                                 }
                         	} else {
 								if (mapperItemCasted.getOnFilledPositional() != null) {
@@ -254,7 +259,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                     } else {
                     	if (!this.config.isConvertNamedToPositionalParameters()) {
                     		if (mapperItemCasted.getOnFilledNamed() != null) {
-                    			mapperItemCasted.getOnFilledNamed().accept(query, mapperItemCasted.getFilterPrp(), value);
+                    			String parameterName;
+                    			mapperItemCasted.getOnFilledNamed().accept(query, mapperItemCasted.getParameterName(), value);
                     		}                    		
                     	} else {
                     		if (mapperItemCasted.getOnFilledPositional() != null) {
@@ -354,15 +360,15 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 					parameterName = indexSufixMatcher.group(1);
 					parameterIndexSufix = indexSufixMatcher.group(2);
 				}
-				if (!this.mappersMap.containsKey(parameterName)) {
+				if (!this.mappersByParamNameMap.containsKey(parameterName)) {
 					throw new QueryTemplateException(
 							"Parameter name '" + parameterName + "' is not present in the mappers.");
 				}
-				if (!parameterWithIndexSufix.equals(parameterName) && this.mappersMap.containsKey(parameterWithIndexSufix) && this.mappersMap.containsKey(parameterName)) {
+				if (!parameterWithIndexSufix.equals(parameterName) && this.mappersByParamNameMap.containsKey(parameterWithIndexSufix) && this.mappersByParamNameMap.containsKey(parameterName)) {
 					throw new QueryTemplateException("Parameter with index sufix '" + parameterWithIndexSufix + "' and parameter name '" + parameterName + "' are both present in the mappers map. This is not allowed.");
                 }
 
-				PropertyMapper<Q, ?> mapperItem = this.mappersMap.get(parameterName);
+				PropertyMapper<Q, ?> mapperItem = this.mappersByParamNameMap.get(parameterName);
 				//if (mapperItem.isUnfoldEnumerable()) {
 				//if (state.getIsRepeatablePropertyMapper().get(mapperItem)) {
 				if (mapperItem.isRepeater() || mapperItem.isUnpackListItems()) {
@@ -419,15 +425,15 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
     	// TODO: Continuar daqui
     	QueryTemplateState<Q> state = new QueryTemplateState<>(this, null, filter, new LinkedHashMap<>(), new LinkedHashMap<>(), new LinkedHashMap<>());
     	
-        // Auxiliary variable to access the transfer objects by property name.
-        Map<String, PropertyMapper> mappers = new LinkedHashMap<>();
-        for (String filterPrp : this.mappersMap.keySet()) {
-			PropertyMapper<Q, ?> mapperItem = this.mappersMap.get(filterPrp);
-            if (mappers.containsKey(mapperItem.getFilterPrp())) {
+        // Auxiliary variable to access the mapper by property name.
+        Map<String, PropertyMapper> mappersByPrp = new LinkedHashMap<>();
+        for (String filterPrp : this.mappersByPropertyNameMap.keySet()) {
+			PropertyMapper<Q, ?> mapperItem = this.mappersByPropertyNameMap.get(filterPrp);
+            if (mappersByPrp.containsKey(mapperItem.getFilterPrp())) {
                 throw new QueryTemplateException(
-                        String.format("Error while adding parameter '%s'", mapperItem.getFilterPrp()));
+                        String.format("Error while adding property '%s'", mapperItem.getFilterPrp()));
             }
-            mappers.put(mapperItem.getFilterPrp(), mapperItem);
+            mappersByPrp.put(mapperItem.getFilterPrp(), mapperItem);
 		}
 
         StringBuilder queryTextMod = new StringBuilder();
@@ -620,12 +626,12 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 			StringBuilder unpackedParameterReferences = new StringBuilder();
 			for (Object valueItem : valueColl) {
 				unpackedParameterReferences.append(currentTargetListItemConnector);
-				unpackedParameterReferences.append(this.config.getParameterUsagePrefix() + mapper.getFilterPrp() + "_" + unpackIndex);
+				unpackedParameterReferences.append(this.config.getParameterUsagePrefix() + mapper.getParameterName() + "_" + unpackIndex);
 				currentTargetListItemConnector = this.config.getTargetItemListSeparatorMarker();
 				unpackIndex++;
 			}
         	unpackIndex = 0;
-			criterionSub = criterionSub.replace(this.config.getParameterUsagePrefix() + mapper.getFilterPrp(), unpackedParameterReferences.toString());
+			criterionSub = criterionSub.replace(this.config.getParameterUsagePrefix() + mapper.getParameterName(), unpackedParameterReferences.toString());
 		}
 
         return criterionSub;
@@ -659,7 +665,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
             			Collection<Object> currentRepeaterValue = CollectionUtil.toCollection(value);
 						if (firstRepeaterValue.size() != currentRepeaterValue.size()) {
 							throw new QueryTemplateException(
-									"All repeatable parameters must have the same number of values. Parameter '"
+									"All repeatable parameters must have the same number of values. Property '"
 											+ firstRepeaterMapper.getFilterPrp() + "' has " + firstRepeaterValue.size()
 											+ " values, while parameter '" + mapper.getFilterPrp() + "' has "
 											+ currentRepeaterValue.size() + " values.");
@@ -684,8 +690,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
             repeatedCriterion.append(tempConnector);
             String criterionSub = criterion;
             for (PropertyMapper repeatableMapper : repeatableMappers) {
-            	criterionSub = criterionSub.replace(this.config.getParameterUsagePrefix() + repeatableMapper.getFilterPrp(),
-                    		this.config.getParameterUsagePrefix() + repeatableMapper.getFilterPrp() + "_" + repeatIndex);
+            	criterionSub = criterionSub.replace(this.config.getParameterUsagePrefix() + repeatableMapper.getParameterName(),
+                    		this.config.getParameterUsagePrefix() + repeatableMapper.getParameterName() + "_" + repeatIndex);
             }
 
             repeatedCriterion.append(criterionSub);
@@ -750,8 +756,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                                 + "' not defined. Before: '" + this.queryTextTokens.get(index.getValue()).getValue() + "'");
                     }
 
-                    Pattern rxReservedAnyReplacer = Pattern.compile(this.config.getReservedAnyParam());
-                    Pattern rxReservedAnyMatcher = Pattern.compile(".*" + this.config.getReservedAnyParam() + ".*");
+                    Pattern rxReservedAnyReplacer = Pattern.compile(this.config.getReservedAnyProperty());
+                    Pattern rxReservedAnyMatcher = Pattern.compile(".*" + this.config.getReservedAnyProperty() + ".*");
                     if (rxReservedAnyMatcher.matcher(filterPrps[0]).matches()) {
                         anyInsteadOfAll = true;
                         filterPrps[0] = rxReservedAnyReplacer.matcher(filterPrps[0]).replaceAll("").trim();
@@ -769,13 +775,13 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 
                         // Whether the parameter is filled.
                         PropertyMapper mapper = null;
-                        if (this.mappersMap.containsKey(filterPrpTrim)) {
-                            mapper = this.mappersMap.get(filterPrpTrim);
+                        if (this.mappersByPropertyNameMap.containsKey(filterPrpTrim)) {
+                            mapper = this.mappersByPropertyNameMap.get(filterPrpTrim);
                         }
 
                         if (mapper != null) {
                         	criterionMappers.add(mapper);
-                            boolean thisParamIsFilled = this.mappersMap.get(filterPrpTrim)
+                            boolean thisParamIsFilled = this.mappersByPropertyNameMap.get(filterPrpTrim)
                                     .getFillVerifier().isFilled(filter, filterPrpTrim);
                             // Negating the verification because of the presence of !.
                             if (negateVerification) {
@@ -811,7 +817,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                     				}
                     				matcherIndex = matcher.end();
                     				String parameterName = matcher.group(1);
-                    				PropertyMapper<Q, ?> mapperItem = this.mappersMap.get(parameterName);
+                    				PropertyMapper<Q, ?> mapperItem = this.mappersByParamNameMap.get(parameterName);
                     				
 									if (mapperItem.isRepeater() && mapperItem.getFillVerifier().isFilled(filter, mapperItem.getFilterPrp())) {
 										throw new QueryTemplateException("The parameter '" + parameterName
@@ -982,21 +988,21 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.EXTRA, tokenStr, start));
             } else if (this.config.getQueryHelperToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.QUERY_HELPER,
-                        this.config.getParamDelimiterToken().matcher(tokenStr).replaceAll(""), start));
-            } else if (this.config.getParamToken().matcher(tokenStr).find()) {
+                        this.config.getPropertiesDelimiterToken().matcher(tokenStr).replaceAll(""), start));
+            } else if (this.config.getPropertiesToken().matcher(tokenStr).find()) {
                 QueryTemplateTokenPojo token = new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.PARAMETER,
-                        this.config.getParamDelimiterToken().matcher(tokenStr).replaceAll(""), start);
+                        this.config.getPropertiesDelimiterToken().matcher(tokenStr).replaceAll(""), start);
                 tokens.add(token);
                 // Storing the parameter in the list of possible parameters.
                 String[] filterPrps = token.getValue().split(",", -1);
                 for (String filterPrp : filterPrps) {
-                    String cleanParam = filterPrp;
-                    Pattern rxReservedAnyReplacer = Pattern.compile(this.config.getReservedAnyParam());
-                    cleanParam = cleanParam.replace("!", "");
-                    cleanParam = rxReservedAnyReplacer.matcher(cleanParam).replaceAll("");
-                    cleanParam = cleanParam.trim();
+                    String cleanProperty = filterPrp;
+                    Pattern rxReservedAnyReplacer = Pattern.compile(this.config.getReservedAnyProperty());
+                    cleanProperty = cleanProperty.replace("!", "");
+                    cleanProperty = rxReservedAnyReplacer.matcher(cleanProperty).replaceAll("");
+                    cleanProperty = cleanProperty.trim();
 
-                    usableParameters.add(cleanParam);
+                    usableParameters.add(cleanProperty);
                 }
             } else if (this.config.getCriterionToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.CRITERION,

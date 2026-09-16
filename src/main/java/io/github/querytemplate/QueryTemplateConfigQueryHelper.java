@@ -174,7 +174,19 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 		this.parent.extraToken(extraToken);
 		return this;
 	}
+	
+	@Override
+	public QueryTemplateConfig<Q> propertiesToken(String propertiesToken) {
+		this.parent.propertiesToken(propertiesToken);
+		return this;
+	}
 
+	@Override
+	public QueryTemplateConfig<Q> repeatToken(String repeatToken) {
+		this.parent.repeatToken(repeatToken);
+		return this;
+	}
+	
 	@Override
 	public QueryTemplateConfig<Q> criterionToken(String criterionToken) {
 		this.parent.criterionToken(criterionToken);
@@ -182,8 +194,8 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> paramDelimiterToken(String paramDelimiterToken) {
-		this.parent.paramDelimiterToken(paramDelimiterToken);
+	public QueryTemplateConfig<Q> propertiesDelimiterToken(String propertiesDelimiterToken) {
+		this.parent.propertiesDelimiterToken(propertiesDelimiterToken);
 		return this;
 	}
 
@@ -192,13 +204,25 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 		this.parent.criterionDelimiterToken(criterionDelimiterToken);
 		return this;
 	}
+	
+	@Override
+	public QueryTemplateConfig<Q> queryHelperToken(String queryHelperToken) {
+		this.parent.queryHelperToken(queryHelperToken);
+		return this;
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q> reservedAnyProperty(String reservedAnyProperty) {
+		this.parent.reservedAnyProperty(reservedAnyProperty);
+		return this;
+	}
 
 	@Override
 	public QueryTemplateConfig<Q> escapeCharacter(String escapeCharacter) {
 		this.parent.escapeCharacter(escapeCharacter);
 		return this;
 	}
-
+	
 	@Override
 	public QueryTemplateConfig<Q> compactQueryText(boolean compactQueryText) {
 		this.parent.compactQueryText(compactQueryText);
@@ -251,8 +275,8 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	}
 
 	@Override
-	public Pattern getParamDelimiterToken() {
-		return this.parent.getParamDelimiterToken();
+	public Pattern getPropertiesDelimiterToken() {
+		return this.parent.getPropertiesDelimiterToken();
 	}
 
 	@Override
@@ -281,8 +305,8 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	}
 
 	@Override
-	public Pattern getParamToken() {
-		return this.parent.getParamToken();
+	public Pattern getPropertiesToken() {
+		return this.parent.getPropertiesToken();
 	}
 
 	@Override
@@ -296,8 +320,8 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	}
 
 	@Override
-	public String getReservedAnyParam() {
-		return this.parent.getReservedAnyParam();
+	public String getReservedAnyProperty() {
+		return this.parent.getReservedAnyProperty();
 	}
 
 	@Override

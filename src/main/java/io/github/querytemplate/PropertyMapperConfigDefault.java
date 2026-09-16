@@ -14,6 +14,7 @@ class PropertyMapperConfigDefault<Q, P> implements PropertyMapperConfig<Q, P> {
 	}
 	
     private String filterPrp;
+    private String parameterName;
     //Not used
     //private String entityPrp;
     private FillVerifier fillVerifier;
@@ -27,6 +28,12 @@ class PropertyMapperConfigDefault<Q, P> implements PropertyMapperConfig<Q, P> {
 	@Override
 	public PropertyMapperConfig<Q, P> filterPrp(String filterPrp) {
 		this.filterPrp = filterPrp;
+		return this;
+	}
+	
+	@Override
+	public PropertyMapperConfig<Q, P> parameterName(String parameterName) {
+		this.parameterName = parameterName;
 		return this;
 	}
 	
@@ -63,6 +70,14 @@ class PropertyMapperConfigDefault<Q, P> implements PropertyMapperConfig<Q, P> {
 	@Override
 	public String getFilterPrp() {
 		return filterPrp;
+	}
+		
+	@Override
+	public String getParameterName() {
+		if (this.parameterName == null) {
+			return this.filterPrp;
+		}
+		return parameterName;
 	}
 	
 	@Override

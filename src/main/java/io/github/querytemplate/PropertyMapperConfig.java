@@ -22,6 +22,15 @@ public interface PropertyMapperConfig<Q, P> {
 	PropertyMapperConfig<Q, P> filterPrp(String filterPrp);
 
 	/**
+	 * Sets the parameter name for the property mapper. If not set, it will default
+	 * to the filter property name.
+	 * 
+	 * @param parameterName the parameter name.
+	 * @return this instance for method chaining.
+	 */
+	PropertyMapperConfig<Q, P> parameterName(String parameterName);
+	
+	/**
 	 * Sets the fill verifier for the property mapper.
 	 * @param fillVerifier the fill verifier.
 	 * @return this instance for method chaining.
@@ -63,6 +72,13 @@ public interface PropertyMapperConfig<Q, P> {
 	 * @return the filter property name.
 	 */
 	String getFilterPrp();
+	
+	/**
+	 * Gets the parameter name for the property mapper. If not set, it will default to the filter property name.
+	 * 
+	 * @return the parameter name.
+	 */
+	String getParameterName();
 
 	/**
 	 * Gets the fill verifier for the property mapper.

@@ -2,11 +2,12 @@ package io.github.querytemplate;
 
 /**
  * Mapper used to relate:<br>
- * FilterProperty X EntityProperty X FillVerifier X CriteriaHandler.
+ * FilterProperty X ParameterName X EntityProperty X FillVerifier X CriteriaHandler.
  */
 public class PropertyMapper<Q, P> {
 
     private String filterPrp;
+    private String parameterName;
     //Not used
     //private String entityPrp;
     private FillVerifier fillVerifier;
@@ -37,9 +38,19 @@ public class PropertyMapper<Q, P> {
         return filterPrp;
     }
 
-    public void setFilterPrp(String filterPrp) {
+    public PropertyMapper<Q, P>  filterPrp(String filterPrp) {
         this.filterPrp = filterPrp;
+        return this;
     }
+    
+	public String getParameterName() {
+		return parameterName;
+	}
+	
+	public PropertyMapper<Q, P> parameterName(String parameterName) {
+		this.parameterName = parameterName;
+		return this;
+	}
 
 //    /**
 //     * @return the property name in the searched entity.
