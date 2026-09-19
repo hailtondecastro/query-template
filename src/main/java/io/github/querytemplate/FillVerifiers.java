@@ -104,4 +104,14 @@ public class FillVerifiers {
                 throw new QueryTemplateException("filterPrp: '" + filterPrp + "'", e);
             }
         };
+        
+	public static final FillVerifier BOOLEAN_TRUE = (filter,
+		filterPrp) -> {
+		try {
+			Boolean b = (Boolean) PropertyUtils.getProperty(filter, filterPrp);
+			return b != null && b;
+		} catch (Exception e) {
+			throw new QueryTemplateException("filterPrp: '" + filterPrp + "'", e);
+		}
+	};
 }

@@ -49,5 +49,5 @@ public interface QueryTemplateInternal<Q> extends QueryTemplate<Q> {
 	 *
 	 * @return the usable parameters.
 	 */
-	Set<String> getUsableParameters();
+	Set<PropertyMapper<Q, ?>> getUsableMappers();
 }

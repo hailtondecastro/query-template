@@ -22,7 +22,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
     private static final Logger LOG = LoggerFactory.getLogger(QueryTemplateDefault.class);
 
     /** Possible parameters in the query. */
-    private Set<String> usableParameters = null;
+    private Set<PropertyMapper<Q, ?>> usableMappers = null;
 
     private boolean compactQueryText = false;
 
@@ -91,7 +91,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
             queryText = this.compactInputQueryText(this.config.getQueryTextOriginal());
         }
 
-        this.usableParameters = new LinkedHashSet<>();
+        this.usableMappers = new LinkedHashSet<>();
 
         this.splitterIntoPartsPattern = "(?s)" + this.config.getFiltersToken() + "|" + this.config.getWhereToken() + "|" + this.config.getAndToken() + "|" + this.config.getOrToken()
                 + "|" + this.config.getNoOperatorToken() + "|" + this.config.getRepeatToken() + "|" + this.config.getOpenParenthesisToken() + "|"
@@ -103,7 +103,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 
         this.queryTextParts = pt.split(this.queryTextEscapedSubs, -1);
         this.queryTextTokens = this.buildTokens(this.queryTextEscapedSubs, this.queryTextParts.length, pt,
-                this.usableParameters);
+                this.usableMappers);
 
         this.restoreEscapes(this.queryTextParts, escapeMap);
         this.restoreEscapesTokens(this.queryTextTokens, escapeMap);
@@ -211,15 +211,13 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      *
      * @param filterObject     the filter object.
      * @param query            the query to set the parameters on.
-     * @param usableParameters usable parameters in the query. Only parameters
-     *                         contained in this set will be used.
      */
     void setParamQueryNonRecursive(QueryTemplateState<Q> state, Q query, Map<Integer, Action> positionalParameterActions) {
         for (String mapperItemKey : this.mappersByParamNameMap.keySet()) {
         	PropertyMapper<Q, ?> mapperItem = this.mappersByParamNameMap.get(mapperItemKey);
         	PropertyMapper<Q, Object> mapperItemCasted = (PropertyMapper<Q, Object>) mapperItem;
             // Tests whether the parameter is used in the query and whether it is filled.
-            if (usableParameters.contains(mapperItemCasted.getFilterPrp())
+            if (usableMappers.contains(mapperItemCasted)
                     && mapperItemCasted.getFillVerifier().isFilled(state.getFilter(), mapperItemCasted.getFilterPrp())) {
                 try {
                     Object value = PropertyUtils.getProperty(state.getFilter(), mapperItemCasted.getFilterPrp());
@@ -960,7 +958,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      * in the array with the delimiters removed.
      */
     private List<QueryTemplateTokenPojo> buildTokens(String queryText, int length, Pattern pt,
-            Set<String> usableParameters) {
+            Set<PropertyMapper<Q, ?>> usableMappers) {
         Matcher mt = pt.matcher(queryText);
 
         List<QueryTemplateTokenPojo> tokens = new ArrayList<>(length);
@@ -1001,8 +999,12 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                     cleanProperty = cleanProperty.replace("!", "");
                     cleanProperty = rxReservedAnyReplacer.matcher(cleanProperty).replaceAll("");
                     cleanProperty = cleanProperty.trim();
-
-                    usableParameters.add(cleanProperty);
+                    
+                    PropertyMapper<Q, ?> mapper = this.mappersByPropertyNameMap.get(cleanProperty);
+					if (mapper == null) {
+						throw new QueryTemplateException("Unmapped property listed: " + cleanProperty);
+					}
+                    usableMappers.add(mapper);
                 }
             } else if (this.config.getCriterionToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.CRITERION,
@@ -1011,6 +1013,25 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                 throw new QueryTemplateException("Unexpected token: '" + tokenStr + "'");
             }
         }
+        
+        // #region Finding usable mappers by parameter usage in the query text
+		String parameterUsagePatternStr = this.config.getParameterUsagePrefix() + this.config.getParameterNamePattern();
+		Pattern parameterUsagePatternPattern = Pattern.compile(parameterUsagePatternStr);
+		
+		Matcher matcher = parameterUsagePatternPattern.matcher(queryText);
+		int matcherIndex = 0;
+		
+		while (true) {
+			if (!matcher.find(matcherIndex)) {
+				break;
+			}
+			matcherIndex = matcher.end();
+			String parameterUsage = matcher.group(1);
+			PropertyMapper<Q, ?> mapper = this.mappersByParamNameMap.get(parameterUsage);
+			
+			usableMappers.add(mapper);
+		}
+        // #endregion
 
         return tokens;
     }
@@ -1022,8 +1043,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      * @return the usable parameters.
      */
     @Override
-	public Set<String> getUsableParameters() {
-        return this.usableParameters;
+	public Set<PropertyMapper<Q, ?>> getUsableMappers() {
+        return this.usableMappers;
     }
 
     /**

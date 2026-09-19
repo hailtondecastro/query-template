@@ -13,23 +13,38 @@ public class PropertyUtils {
 
     /**
      * Returns the value of the property named {@code propertyName} of {@code obj}
-     * by invoking the corresponding getter (e.g. "name" -&gt; "getName").
+     * by invoking the corresponding getter (e.g., "name" -&gt; "getName" or "active" -&gt; "isActive").
      *
      * @param obj          the object to read the property from.
      * @param propertyName the property name.
      * @return the property value.
+     * @throws IllegalArgumentException if the property or its getter method cannot be found.
+     * @throws RuntimeException         if an error occurs during method invocation.
      */
     public static Object getProperty(Object obj, String propertyName) {
+        String capitalized = propertyName.substring(0, 1).toUpperCase() + propertyName.substring(1);
+        
+        String getterName = "get" + capitalized;
+        String isName = "is" + capitalized;
+
+        Method method = null;
+        
         try {
-            // Converts the field name to the getter convention (e.g. "name" -> "getName").
-            String getterName = "get" + propertyName.substring(0, 1).toUpperCase() + propertyName.substring(1);
-            Method method = obj.getClass().getMethod(getterName);
-            return method.invoke(obj);
+            // First, try the standard "get" prefix
+            method = obj.getClass().getMethod(getterName);
         } catch (NoSuchMethodException e) {
-            throw new IllegalArgumentException("Property or getter not found: " + propertyName, e);
+            try {
+                // Fallback to the "is" prefix for boolean properties
+                method = obj.getClass().getMethod(isName);
+            } catch (NoSuchMethodException ex) {
+                throw new IllegalArgumentException("Property, getter, or is-getter not found: " + propertyName, ex);
+            }
+        }
+
+        try {
+            return method.invoke(obj);
         } catch (Exception e) {
-            // Catches IllegalAccessException or InvocationTargetException.
-            throw new RuntimeException("Error while accessing property " + propertyName, e);
+            throw new RuntimeException("Error while accessing property: " + propertyName, e);
         }
     }
 }

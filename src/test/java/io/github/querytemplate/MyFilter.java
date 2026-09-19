@@ -16,7 +16,7 @@ public class MyFilter {
     private Collection<Integer> filterPrp7;
     private Integer[] filterPrp8;
 
-    public MyFilter() {
+	public MyFilter() {
         super();
     }
 
@@ -96,4 +96,20 @@ public class MyFilter {
     public void setFilterPrp8(Integer[] filterPrp8) {
         this.filterPrp8 = filterPrp8;
     }
+    
+    public boolean isFilterPrp1AndfilterPrp2() {
+    	if (this.getFilterPrp1() == null) {
+    		return false;
+    	}
+    	if (this.getFilterPrp1().isEmpty()) {
+    		return false;
+    	}
+		if (this.getFilterPrp2() == null) {
+			return false;
+		}
+		if (this.getFilterPrp2().isEmpty()) {
+			return false;
+		}
+		return true;
+	}
 }

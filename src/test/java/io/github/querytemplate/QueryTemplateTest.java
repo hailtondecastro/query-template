@@ -81,6 +81,7 @@ public class QueryTemplateTest {
 	        		.onFilled(this.simpleOnFilledPositional(StandardBasicTypes.INTEGER))
 	        		.done()
 	        	.addMapper("filterPrp8", Integer[].class).fillVerifier(FillVerifiers.ARRAY_NOTEMPTY).onFilled(this.simpleOnFilledNamed(StandardBasicTypes.INTEGER)).onFilled(this.simpleOnFilledPositional(StandardBasicTypes.INTEGER)).repeater(true).done()
+	        	.addMapper("filterPrp1AndfilterPrp2", Boolean.class).fillVerifier(FillVerifiers.BOOLEAN_TRUE).done()
     		;
     }
     
@@ -517,7 +518,7 @@ public class QueryTemplateTest {
             "   from ( \n" +
             "   [filters] \n" +
             "     [filterPrp5] [no_operator][Q:EmployeeQH]" +
-            "     [!filterPrp5][no_operator][ SELECT 'NADA' FROM DUAL]" +
+            "     [!filterPrp5][no_operator][ SELECT 'NOTHING' FROM DUAL]" +
             "   ) FUNC_H_SQ\n";
     
     @Test
@@ -540,14 +541,14 @@ public class QueryTemplateTest {
         QueryTemplateState<Query<MyEntity>> stateFilled = qt.buildQueryState(filled);
         LOG.debug("Filled:\n" + stateFilled.getQueryString());
         assertThat(stateFilled.getQueryString(), containsString("EMPLOYEESTB"));
-        assertThat(stateFilled.getQueryString(), not(containsString("SELECT 'NADA' FROM DUAL")));
+        assertThat(stateFilled.getQueryString(), not(containsString("SELECT 'NOTHING' FROM DUAL")));
 
         // filterPrp5 empty -> fallback SELECT is used.
         MyFilter empty = new MyFilter("foo1", "", "foo3", Arrays.asList("foo", "baa"), "",
                 null, Arrays.asList(1, 2, 3), new Integer[] { 4, 5, 6 });
         QueryTemplateState<Query<MyEntity>> stateEmpty = qt.buildQueryState(empty);
         LOG.debug("Empty:\n" + stateEmpty.getQueryString());
-        assertThat(stateEmpty.getQueryString(), containsString("SELECT 'NADA' FROM DUAL"));
+        assertThat(stateEmpty.getQueryString(), containsString("SELECT 'NOTHING' FROM DUAL"));
     }
     
     @Test
@@ -572,13 +573,65 @@ public class QueryTemplateTest {
         QueryTemplateState<Query<MyEntity>> stateFilled = qt.buildQueryState(filled);
         LOG.debug("Filled:\n" + stateFilled.getQueryString());
         assertThat(stateFilled.getQueryString(), containsString("EMPLOYEESTB"));
-        assertThat(stateFilled.getQueryString(), not(containsString("SELECT 'NADA' FROM DUAL")));
+        assertThat(stateFilled.getQueryString(), not(containsString("SELECT 'NOTHING' FROM DUAL")));
 
         // filterPrp5 empty -> fallback SELECT is used.
         MyFilter empty = new MyFilter("foo1", "", "foo3", Arrays.asList("foo", "baa"), "",
                 null, Arrays.asList(1, 2, 3), new Integer[] { 4, 5, 6 });
         QueryTemplateState<Query<MyEntity>> stateEmpty = qt.buildQueryState(empty);
         LOG.debug("Empty:\n" + stateEmpty.getQueryString());
-        assertThat(stateEmpty.getQueryString(), containsString("SELECT 'NADA' FROM DUAL"));
+        assertThat(stateEmpty.getQueryString(), containsString("SELECT 'NOTHING' FROM DUAL"));
+    }
+    
+    private static final String USED_PARAMETER_QUERY =
+            "select FUNC.att1 from EMPLOYEESTB FUNC \n" +
+            "   [filters] \n" +
+            "   [where] \n" +
+            "     [filterPrp1AndfilterPrp2][ (FUNC.att1 = :filterPrp1 and FUNC.att2 = :filterPrp2) ] \n";
+    @Test
+    public void usedParameterTest() {
+        String query = USED_PARAMETER_QUERY;
+
+        QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
+        this.configPropertyMappers(queryTemplateConfig);
+        
+        QueryTemplate<Query<MyEntity>> qt = QueryTemplate.of(queryTemplateConfig);
+
+        // filterPrp5 filled -> helper is used.
+        MyFilter mf  = new MyFilter("foo1", "foo2", "foo3", Arrays.asList("foo", "baa"), "bla",
+                null, Arrays.asList(1, 2, 3), new Integer[] { 4, 5, 6 });
+        QueryTemplateState<Query<MyEntity>> state = qt.buildQueryState(mf );
+        LOG.debug("Filled:\n" + state.getQueryString());
+        assertThat(state.getQueryString(), containsString("(FUNC.att1 = :filterPrp1 and FUNC.att2 = :filterPrp2)"));
+         
+        QueryMock<MyEntity> queryMock = new QueryMock<>();
+        qt.setParamQuery(state, queryMock.getQuery());
+        assertThat(queryMock.getParameterCalls(), hasItem(containsString("setParameter[filterPrp1, foo1, org.hibernate.type.StringType")));
+        assertThat(queryMock.getParameterCalls(), hasItem(containsString("setParameter[filterPrp1, foo1, org.hibernate.type.StringType")));
+    }
+    
+    @Test
+    public void usedParameterTestDifferentParamName() {
+        String query = USED_PARAMETER_QUERY;
+        query = query.replaceAll(":filterPrp", ":filterPrm");
+
+        QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
+        this.configPropertyMappersDifferentParamName(queryTemplateConfig);
+        
+        QueryTemplate<Query<MyEntity>> qt = QueryTemplate.of(queryTemplateConfig);
+
+        // filterPrp5 filled -> helper is used.
+        MyFilter mf  = new MyFilter("foo1", "foo2", "foo3", Arrays.asList("foo", "baa"), "bla",
+                null, Arrays.asList(1, 2, 3), new Integer[] { 4, 5, 6 });
+        QueryTemplateState<Query<MyEntity>> state = qt.buildQueryState(mf );
+        LOG.debug("Filled:\n" + state.getQueryString());
+        assertThat(state.getQueryString(), containsString("(FUNC.att1 = :filterPrm1 and FUNC.att2 = :filterPrm2)"));
+         
+        QueryMock<MyEntity> queryMock = new QueryMock<>();
+        qt.setParamQuery(state, queryMock.getQuery());
+        assertThat(queryMock.getParameterCalls(), hasItem(containsString("setParameter[filterPrm1, foo1, org.hibernate.type.StringType")));
+        assertThat(queryMock.getParameterCalls(), hasItem(containsString("setParameter[filterPrm1, foo1, org.hibernate.type.StringType")));
     }
 }
