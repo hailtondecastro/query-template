@@ -27,7 +27,7 @@ jobs:
           cache: maven
 
       - name: Build and test with Maven
-        run: mvn -B verify -P ${{ matrix.java-version }}
+        run: mvn -B verify -P jdk${{ matrix.java-version }}
 
   publish:
 
