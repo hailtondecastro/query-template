@@ -11,7 +11,10 @@ import java.util.Set;
 public interface QueryTemplateInternal<Q> extends QueryTemplate<Q> {
 	/**
 	 * Internal method to set the parameters of a query. This method is used for nested templates.<br>
-	 * Recursively assigns values to the parameters based on the fill state. This method is used for nested templates.
+	 * Recursively assigns values to the parameters based on the particip
+	 * 
+	 *  
+	 * This method is used for nested templates.
 	 * @param state the state of the query template.
 	 * @param query the query to set the parameters on.
 	 * @param positionalParameterActions a map of positional parameter actions to be applied to the query.
@@ -23,7 +26,8 @@ public interface QueryTemplateInternal<Q> extends QueryTemplate<Q> {
 	/**
 	 * Internal method to set the parameters of a query. This method is used for nested templates.<br>
 	 * 
-	 * Assigns values to the parameters based on the fill state..
+	 * Assigns values to the parameters based on the participating mappers and the provided state. This method is used for nested templates.
+	 * 
 	 *
 	 * @param state        the state of the query template.
 	 * @param query        the query to set the parameters on.

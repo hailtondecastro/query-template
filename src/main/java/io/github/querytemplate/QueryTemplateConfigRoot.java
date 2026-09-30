@@ -3,6 +3,7 @@ package io.github.querytemplate;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
@@ -26,14 +27,15 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	Pattern openParenthesisToken = Pattern.compile(QueryTemplateConfig.OPEN_PARENTHESIS_TOKEN);
 	Pattern closeParenthesisToken = Pattern.compile(QueryTemplateConfig.CLOSE_PARENTHESIS_TOKEN);
 	Pattern extraToken = Pattern.compile(QueryTemplateConfig.EXTRA_TOKEN);
-	Pattern propertiesToken = Pattern.compile(QueryTemplateConfig.PROPERTIES_TOKEN);
+	String reservedAnyProperty = QueryTemplateConfig.RESERVED_ANY_PROPERTY;
+	String reservedEvalProperty = QueryTemplateConfig.RESERVED_EVAL_PROPERTY;
+	Pattern propertiesToken = Pattern.compile(String.format(QueryTemplateConfig.PROPERTIES_TOKEN, this.getReservedAnyProperty(), this.getReservedEvalProperty()));
 	Pattern repeatToken = Pattern.compile(QueryTemplateConfig.REPEAT_TOKEN);
 	Pattern criterionToken = Pattern.compile(QueryTemplateConfig.CRITERION_TOKEN);
 	Pattern propertiesDelimiterToken = Pattern.compile(QueryTemplateConfig.PROPERTIES_DELIMITER_TOKEN);
 	Pattern criterionDelimiterToken = Pattern.compile(QueryTemplateConfig.CRITERION_DELIMITER_TOKEN);
 	Pattern queryHelperToken = Pattern.compile(QueryTemplateConfig.QUERY_HELPER_TOKEN);
 	String escapeCharacter = QueryTemplateConfig.ESCAPE_CHARACTER;
-	String reservedAnyProperty = QueryTemplateConfig.RESERVED_ANY_PROPERTY;
 	String targetReservedWordWhere = QueryTemplateConfig.TARGET_RESERVED_WORD_WHERE;
 	String targetReservedWordAnd = QueryTemplateConfig.TARGET_RESERVED_WORD_AND;
 	String targetReservedWordOr = QueryTemplateConfig.TARGET_RESERVED_WORD_OR;
@@ -46,11 +48,13 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	String parameterNamePattern = QueryTemplateConfig.PARAMETER_NAME_PATTERN;
 	int parameterBasePosition = 1;
 	boolean compactQueryText = false;
-
+	
     /** QueryTemplate used as Helpers to assemble inner parts of the query. */
     private Map<String, QueryTemplateConfig<Q>> queryHelpers = new LinkedHashMap<>();
     
     private String queryTextOriginal;
+    
+    private Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator;
     
 	QueryTemplateConfigRoot(String queryText) {
 		this.mappersConfigMap = new LinkedHashMap<>();
@@ -256,6 +260,12 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	}
 	
 	@Override
+	public QueryTemplateConfig<Q> reservedEvalProperty(String reservedEvalProperty) {
+		this.reservedEvalProperty = reservedEvalProperty;
+		return this;
+	}
+	
+	@Override
 	public QueryTemplateConfig<Q> compactQueryText(boolean compactQueryText) {
 		this.compactQueryText = compactQueryText;
 		return this;
@@ -264,6 +274,12 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	@Override
 	public QueryTemplateConfig<Q>  clearMappers() {
 		this.mappersConfigMap.clear();
+		return this;
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q> evalRunnerCreator(Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator) {
+		this.evalRunnerCreator = evalRunnerCreator;
 		return this;
 	}
 	
@@ -323,7 +339,7 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	}
 
 	@Override
-	public Map<String, PropertyMapperConfig<Q, ?>> getMappersConfigMap() {
+	public Map<String, PropertyMapperConfig<Q, ?>> getMappersConfig() {
 		return mappersConfigMap;
 	}
 
@@ -360,6 +376,11 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	@Override
 	public String getReservedAnyProperty() {
 		return reservedAnyProperty;
+	}
+	
+	@Override
+	public String getReservedEvalProperty() {
+		return this.reservedEvalProperty;
 	}
 
 	@Override
@@ -423,7 +444,20 @@ public class QueryTemplateConfigRoot<Q> implements QueryTemplateConfig<Q> {
 	}
 
 	@Override
+	public Function<QueryTemplateState<?>, EvalRunner> getEvalRunnerCreator() {
+		return evalRunnerCreator;
+	}
+	
+	@Override
 	public QueryTemplateConfig<Q> getParent() {
 		return null;
+	}
+
+	@Override
+	public String toString() {
+		return "QueryTemplateConfigRoot ["
+				+ "convertNamedToPositionalParameters=" + convertNamedToPositionalParameters 
+				+ ", mappersConfigMap=" + mappersConfigMap + ", queryTextOriginal=" + queryTextOriginal
+				+ ", queryHelpers=" + queryHelpers + "]";
 	}
 }

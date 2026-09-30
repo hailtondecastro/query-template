@@ -14,9 +14,12 @@ public interface AssignNamedParameter<Q, P> {
 	 * @param query the query to set the parameter in.
 	 * @param name  the name of the parameter.
 	 * @param value the value of the parameter.
+	 * @param parameterInfo Informations about the parameter being assigned, 
+	 *                      including its name, unpacked name and position.
 	 */
 	void accept(Q query,
 		String name,
-		P value);
+		P value,
+		AssignedParameterInfo<P> parameterInfo);
 
 }

@@ -4,17 +4,17 @@ import java.lang.reflect.Array;
 import java.util.Collection;
 
 /**
- * List of the most common {@link FillVerifier}s.
+ * List of the most common {@link ParticipatesInQuery}s.
  */
-public class FillVerifiers {
+public class ParticipantCheckers {
 
-    private FillVerifiers() {
+    private ParticipantCheckers() {
     }
 
     /**
-     * Filled if: value != null.
+     * Participates if: value != null.
      */
-    public static final FillVerifier NOTNULL =
+    public static final ParticipatesInQuery NOTNULL =
         (filter, filterPrp) -> {
             try {
                 return PropertyUtils.getProperty(filter, filterPrp) != null;
@@ -24,9 +24,9 @@ public class FillVerifiers {
         };
 
     /**
-     * Filled if: value != null AND value != 0.
+     * Participates if: value != null AND value != 0.
      */
-    public static final FillVerifier NUMBER_NOTZERO =
+    public static final ParticipatesInQuery NUMBER_NOTZERO =
         (filter, filterPrp) -> {
             try {
                 Object n = PropertyUtils.getProperty(filter, filterPrp);
@@ -42,9 +42,9 @@ public class FillVerifiers {
 
     /**
      * Used when the evaluation is only meant to decide whether to include a piece
-     * of Query, but there is no parameter value to be filled.
+     * of Query, but there is no parameter value to be assigned.
      */
-    public static final FillVerifier FRAGMENT_INCLUSION =
+    public static final ParticipatesInQuery FRAGMENT_INCLUSION =
         (filter, filterPrp) -> {
             try {
                 FragmentInclusion fragmentInclusion = (FragmentInclusion) PropertyUtils.getProperty(filter, filterPrp);
@@ -55,9 +55,9 @@ public class FillVerifiers {
         };
 
     /**
-     * Filled if: value != null AND value.toString().length() != 0.
+     * Participates if: value != null AND value.toString().length() != 0.
      */
-    public static final FillVerifier STRING_NOTEMPTY =
+    public static final ParticipatesInQuery STRING_NOTEMPTY =
         (filter, filterPrp) -> {
             try {
                 Object o = PropertyUtils.getProperty(filter, filterPrp);
@@ -72,9 +72,9 @@ public class FillVerifiers {
         };
 
     /**
-     * Filled if: value != null AND ((Collection) value).size() &gt; 0.
+     * Participates if: value != null AND ((Collection) value).size() &gt; 0.
      */
-    public static final FillVerifier COLLECTION_NOTEMPTY =
+    public static final ParticipatesInQuery COLLECTION_NOTEMPTY =
         (filter, filterPrp) -> {
             try {
                 Collection<?> clObj = (Collection<?>) PropertyUtils.getProperty(filter, filterPrp);
@@ -89,9 +89,9 @@ public class FillVerifiers {
         };
 
     /**
-     * Filled if: value != null AND java.lang.reflect.Array.getLength(value) &gt; 0.
+     * Participates if: value != null AND java.lang.reflect.Array.getLength(value) &gt; 0.
      */
-    public static final FillVerifier ARRAY_NOTEMPTY =
+    public static final ParticipatesInQuery ARRAY_NOTEMPTY =
         (filter, filterPrp) -> {
             try {
                 Object objs = PropertyUtils.getProperty(filter, filterPrp);
@@ -105,7 +105,7 @@ public class FillVerifiers {
             }
         };
         
-	public static final FillVerifier BOOLEAN_TRUE = (filter,
+	public static final ParticipatesInQuery BOOLEAN_TRUE = (filter,
 		filterPrp) -> {
 		try {
 			Boolean b = (Boolean) PropertyUtils.getProperty(filter, filterPrp);

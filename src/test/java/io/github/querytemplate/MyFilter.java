@@ -7,6 +7,30 @@ import java.util.Collection;
  */
 public class MyFilter {
 
+	public static final class FormalName {
+		private String firstName;
+		private String lastName;
+		public FormalName(
+			String firstName,
+			String lastName) {
+			super();
+			this.firstName = firstName;
+			this.lastName = lastName;
+		}
+		public String getFirstName() {
+			return firstName;
+		}
+		public void setFirstName(String firstName) {
+			this.firstName = firstName;
+		}
+		public String getLastName() {
+			return lastName;
+		}
+		public void setLastName(String lastName) {
+			this.lastName = lastName;
+		}
+	}
+	
     private String filterPrp1;
     private String filterPrp2;
     private String filterPrp3;
@@ -15,6 +39,8 @@ public class MyFilter {
     private MyProperty filterPrp6;
     private Collection<Integer> filterPrp7;
     private Integer[] filterPrp8;
+    private FormalName formalName;
+    private FormalName[] formalNamesArr;
 
 	public MyFilter() {
         super();
@@ -33,7 +59,31 @@ public class MyFilter {
         this.filterPrp8 = filterPrp8;
     }
 
-    public String getFilterPrp1() {
+    public MyFilter(
+		String filterPrp1,
+		String filterPrp2,
+		String filterPrp3,
+		Collection<String> filterPrp4,
+		String filterPrp5,
+		MyProperty filterPrp6,
+		Collection<Integer> filterPrp7,
+		Integer[] filterPrp8,
+		FormalName formalName,
+		FormalName[] formalNamesArr) {
+		super();
+		this.filterPrp1 = filterPrp1;
+		this.filterPrp2 = filterPrp2;
+		this.filterPrp3 = filterPrp3;
+		this.filterPrp4 = filterPrp4;
+		this.filterPrp5 = filterPrp5;
+		this.filterPrp6 = filterPrp6;
+		this.filterPrp7 = filterPrp7;
+		this.filterPrp8 = filterPrp8;
+		this.formalName = formalName;
+		this.formalNamesArr = formalNamesArr;
+	}
+
+	public String getFilterPrp1() {
         return filterPrp1;
     }
 
@@ -96,8 +146,24 @@ public class MyFilter {
     public void setFilterPrp8(Integer[] filterPrp8) {
         this.filterPrp8 = filterPrp8;
     }
-    
-    public boolean isFilterPrp1AndfilterPrp2() {
+
+	public FormalName getFormalName() {
+		return formalName;
+	}
+
+	public void setFormalName(FormalName formalName) {
+		this.formalName = formalName;
+	}
+
+	public FormalName[] getFormalNamesArr() {
+		return formalNamesArr;
+	}
+
+	public void setFormalNamesArr(FormalName[] formalNamesArr) {
+		this.formalNamesArr = formalNamesArr;
+	}
+
+	public boolean isFilterPrp1AndfilterPrp2() {
     	if (this.getFilterPrp1() == null) {
     		return false;
     	}

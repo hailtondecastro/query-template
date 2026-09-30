@@ -1,6 +1,7 @@
 package io.github.querytemplate;
 
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
@@ -43,19 +44,33 @@ public interface QueryTemplateConfig<Q> {
 	 */
 	String EXTRA_TOKEN = "\\[extra\\]";
 	/**
-	 * OBS: Use the reserved word '$any$' at the beginning of the properties list to
-	 * consider the criterion filled with at least one parameter instead of all of
-	 * them.<br> 
+	 * Use the reserved word '$any$' at the beginning of the properties list to
+	 * consider the criterion eligible for inclusion in the query if any of the properties is participating.<br> 
 	 * Value: <code>"\\$any\\$"</code>.
 	 */
 	String RESERVED_ANY_PROPERTY = "\\$any\\$";
+	
+	/**
+	 * Use the reserved word '$eval$' at the beginning of the properties
+	 * to consider the criterion eligible for inclusion in the query in case the expression return <code>true</code>.<br>
+	 * The expression can use the filter properties values as inner fields of <code>prpValues</code> or <code>pv</code> script variable, like <code>prpValues.propertyName</code>.<br>
+	 * The the result of `participation tests` can be used as boolean inner fields of <code>prpParticipations</code> or <code>pp</code> script variable, like <code>prpParticipation.propertyName</code>.<br>  
+	 * The expression will be evaluated using the {@link EvalRunner} provided by the user on {@link QueryTemplateConfig#evalRunnerCreator(Function)}, so the language depends on the {@link EvalRunner} provided, so, the language can be whatever you prefer, javascript, pyton, bean shell, etc.<br> 
+	 * If no EvalRunner is provided, an exception will be thrown when the expression is evaluated as <code>true</code>.<br>
+	 * Value: <code>"\\$eval\\$"</code>.
+	 */
+	String RESERVED_EVAL_PROPERTY = "\\$eval\\$";
+	
 	/**
 	 * Token with the names of the properties separated by
-	 * comma, surrounded by the parameter delimiters. All the parameters must be
-	 * filled for the criterion to be included.<br>
-	 * Value: <code>"\\[[a-zA-Z0-9|,|!|\\$| ]+\\]"</code>.
+	 * comma, surrounded by the parameter delimiters. All the properties must be
+	 * participating in the query (or not participating if preceded by "!")
+	 * for the criterion to be included.<br>
+	 * Value: <code>"(\\[(!?\\s*\\b[\\w-]+\\b\\s*,?\\s*){1,300}\\])|(\\[\\s{0,300}%s[^\\]]{0,300}\\])|(\\[\\s{0,300}%s[^\\]]{0,300}\\])"</code>.<br>
+	 * The value of {@link #getPropertiesToken()} is <code>Pattern.compile(String.format(QueryTemplateConfig.PROPERTIES_TOKEN, this.getReservedAnyProperty(), this.getReservedEvalProperty()))</code> 
 	 */
-	String PROPERTIES_TOKEN = "\\[[a-zA-Z0-9|,|!|\\$| ]+\\]";
+	String PROPERTIES_TOKEN = "(\\[(!?\\s*\\b[\\w-]+\\b\\s*,?\\s*){1,300}\\])|(\\[\\s{0,300}%s[^\\]]{0,300}\\])|(\\[\\s{0,300}%s[^\\]]{0,300}\\])";
+	
 	/** Repeats the sentence once for each element in the array. */
 	String REPEAT_TOKEN = "\\[repeat\\]";
 	/** Default token for the criterion. */
@@ -116,7 +131,7 @@ public interface QueryTemplateConfig<Q> {
 	 * Value: <code>", "</code>.
 	 */
 	String TARGET_ITEM_LIST_SEPARATOR_MARKER = ", ";
-
+	
 	/**
 	 * Adds a property mapper configuration for the specified filter property.
 	 * 
@@ -392,6 +407,15 @@ public interface QueryTemplateConfig<Q> {
 	 * @return This instance for method chaining.
 	 */
 	QueryTemplateConfig<Q> reservedAnyProperty(String reservedAnyProperty);
+	
+	/**
+	 * Sets the reserved word for `eval` property markers. See
+	 * {@link #RESERVED_EVAL_PROPERTY} for the default value.
+	 * 
+	 * @param reservedEvalProperty the reserved word for `eval` parameter markers.
+	 * @return This instance for method chaining.
+	 */
+	QueryTemplateConfig<Q> reservedEvalProperty(String reservedEvalProperty);
 
 	/**
 	 * Sets whether to compact the query text. If true, the query text will be
@@ -408,6 +432,13 @@ public interface QueryTemplateConfig<Q> {
 	 * @return This instance for method chaining.
 	 */
 	QueryTemplateConfig<Q> clearMappers();
+	
+	/**
+	 * Sets the EvalRunner creator function. This function is used to create an EvalRunner instance based on the QueryTemplateState.
+	 * @param evalRunnerCreator
+	 * @return
+	 */
+	QueryTemplateConfig<Q> evalRunnerCreator(Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator);
 	
 	/**
 	 * Gets the parent configuration after defining a QueryHelper. If this is the root configuration, returns null.
@@ -498,7 +529,7 @@ public interface QueryTemplateConfig<Q> {
 	 * 
 	 * @return the map of property mappers configurations.
 	 */
-	Map<String, PropertyMapperConfig<Q, ?>> getMappersConfigMap();
+	Map<String, PropertyMapperConfig<Q, ?>> getMappersConfig();
 
 	/**
 	 * Gets the query helpers map.
@@ -548,6 +579,14 @@ public interface QueryTemplateConfig<Q> {
 	 * @return the reserved word for `any` parameter markers.
 	 */
 	String getReservedAnyProperty();
+	
+	/**
+	 * Gets the reserved word for `eval` property markers. See
+	 * {@link #RESERVED_EVAL_PROPERTY} for the default value.
+	 * 
+	 * @return the reserved word for `eval` parameter markers.
+	 */
+	String getReservedEvalProperty();
 
 	/**
 	 * Gets the target reserved word for "and". See {@link #TARGET_RESERVED_WORD_AND} for the default value.
@@ -632,6 +671,16 @@ public interface QueryTemplateConfig<Q> {
 	 * @return the original query text.
 	 */
 	String getQueryTextOriginal();
+	
+	/**
+	 * Gets the EvalRunner creator function. This function is used to create an
+	 * EvalRunner instance based on the QueryTemplateState. It means that the 
+	 * EvalRunner will be created for each evaluation of the query template, 
+	 * allowing to use the current state of the query template to create the EvalRunner.
+	 * 
+	 * @return the EvalRunner creator function.
+	 */
+	Function<QueryTemplateState<?>, EvalRunner> getEvalRunnerCreator();	
 
 	/**
 	 * Creates a new instance of QueryTemplateConfig with the specified query text and query class.

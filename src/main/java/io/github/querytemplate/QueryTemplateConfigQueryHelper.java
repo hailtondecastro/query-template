@@ -3,6 +3,7 @@ package io.github.querytemplate;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q> {
@@ -216,6 +217,12 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 		this.parent.reservedAnyProperty(reservedAnyProperty);
 		return this;
 	}
+	
+	@Override
+	public QueryTemplateConfig<Q> reservedEvalProperty(String reservedEvalProperty) {
+		this.parent.reservedEvalProperty(reservedEvalProperty);
+		return this;
+	}
 
 	@Override
 	public QueryTemplateConfig<Q> escapeCharacter(String escapeCharacter) {
@@ -232,6 +239,12 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	@Override
 	public QueryTemplateConfig<Q> clearMappers() {
 		throw new QueryTemplateException("QueryHelper cannot clear mappers. Use the parent QueryTemplateConfig to clear mappers.");
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q> evalRunnerCreator(Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator) {
+		this.parent.evalRunnerCreator(evalRunnerCreator);
+		return this;
 	}
 
 	@Override
@@ -290,8 +303,8 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	}
 
 	@Override
-	public Map<String, PropertyMapperConfig<Q, ?>> getMappersConfigMap() {
-		return this.parent.getMappersConfigMap();
+	public Map<String, PropertyMapperConfig<Q, ?>> getMappersConfig() {
+		return this.parent.getMappersConfig();
 	}
 
 	@Override
@@ -322,6 +335,11 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	@Override
 	public String getReservedAnyProperty() {
 		return this.parent.getReservedAnyProperty();
+	}
+	
+	@Override
+	public String getReservedEvalProperty() {
+		return this.parent.getReservedEvalProperty();
 	}
 
 	@Override
@@ -379,9 +397,21 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 		return this.parent.isCompactQueryText();
 	}
 
+	@Override
+	public Function<QueryTemplateState<?>, EvalRunner> getEvalRunnerCreator() {
+		return this.parent.getEvalRunnerCreator();
+	}
 
 	@Override
 	public QueryTemplateConfig<Q> getParent() {
 		return this.parent;
 	}
+
+	@Override
+	public String toString() {
+		return "QueryTemplateConfigQueryHelper [queryTextOriginal=" + queryTextOriginal 
+				+ ", queryHelpers=" + queryHelpers + "]";
+	}
+	
+	
 }

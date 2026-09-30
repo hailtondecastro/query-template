@@ -3,12 +3,13 @@ package io.github.querytemplate;
 import java.util.List;
 import java.util.Map;
 
-public class QueryTemplateState<Q> {
+public class QueryTemplateStateDefault<Q> implements QueryTemplateStateInternal<Q> {
 	private QueryTemplate<Q> templateOwner;
 	private String queryString;
 	private Object filter;
-	private Map<PropertyMapper<Q, ?>, List<Integer>> propertyMapperToParameterPositions;
-	private Map<PropertyMapper<Q, ?>, Map<Integer,List<Integer>>> propertyMapperItemIndexToParameterPositions;
+	private Map<PropertyMapper<Q, ?>, List<AssignedParameterInfo<?>>> propertyMapperToAssignedParameterInfo;
+	private Map<PropertyMapper<Q, ?>, Map<Integer,List<AssignedParameterInfo<?>>>> propertyMapperItemIndexToAssignedParameterInfo;
+	private EvalRunner evalRunner;
 //	/**
 //	 * See {@link #getIsRepeatablePropertyMapper()} for details.
 //	 */
@@ -19,49 +20,42 @@ public class QueryTemplateState<Q> {
 	 * @param templateOwner
 	 * @param queryString
 	 * @param filter
-	 * @param propertyMapperToParameterPositions
-	 * @param propertyMapperItemIndexToParameterPositions
+	 * @param propertyMapperToAssignedParameterInfo
+	 * @param propertyMapperItemIndexToAssignedParameterInfo
 	 * @param isRepeatablePropertyMapper See {@link #getIsRepeatablePropertyMapper()} for details.
 	 */
-	QueryTemplateState(
+	QueryTemplateStateDefault(
 		QueryTemplate<Q> templateOwner,
 		String queryString,
 		Object filter,
-		Map<PropertyMapper<Q, ?>, List<Integer>> propertyMapperToParameterPositions,
-		Map<PropertyMapper<Q, ?>, Map<Integer,List<Integer>>> propertyMapperItemIndexToParameterPositions,
+		Map<PropertyMapper<Q, ?>, List<AssignedParameterInfo<?>>> propertyMapperToAssignedParameterInfo,
+		Map<PropertyMapper<Q, ?>, Map<Integer,List<AssignedParameterInfo<?>>>> propertyMapperItemIndexToAssignedParameterInfo,
 		Map<PropertyMapper<Q, ?>, Boolean> isRepeatablePropertyMapper) {
 		super();
 		this.templateOwner = templateOwner;
 		this.queryString = queryString;
 		this.filter = filter;
-		this.propertyMapperToParameterPositions = propertyMapperToParameterPositions;
-		this.propertyMapperItemIndexToParameterPositions = propertyMapperItemIndexToParameterPositions;
+		this.propertyMapperToAssignedParameterInfo = propertyMapperToAssignedParameterInfo;
+		this.propertyMapperItemIndexToAssignedParameterInfo = propertyMapperItemIndexToAssignedParameterInfo;
 	}
 
 
+	@Override
 	public QueryTemplate<Q> getTemplateOwner() {
 		return templateOwner;
 	}
 
-
+	@Override
 	public String getQueryString() {
 		return queryString;
 	}
 
 
+	@Override
 	public Object getFilter() {
 		return filter;
 	}
-
-
-	public Map<PropertyMapper<Q, ?>, List<Integer>> getPropertyMapperToParameterPositions() {
-		return propertyMapperToParameterPositions;
-	}
-
-
-	public Map<PropertyMapper<Q, ?>, Map<Integer, List<Integer>>> getPropertyMapperItemIndexToParameterPositions() {
-		return propertyMapperItemIndexToParameterPositions;
-	}
+	
 
 //	/**
 //	 * If <code>true</code> the enumerable must be unfolded (set as if there were several
@@ -78,32 +72,42 @@ public class QueryTemplateState<Q> {
 //	public Map<PropertyMapper<Q, ?>, Boolean> getIsRepeatablePropertyMapper() {
 //		return isRepeatablePropertyMapper;
 //	}
+	
+	@Override
+	public Map<PropertyMapper<Q, ?>, List<AssignedParameterInfo<?>>> getPropertyMapperToAssignedParameterInfo() {
+		return propertyMapperToAssignedParameterInfo;
+	}
 
+	@Override
+	public void setPropertyMapperToAssignedParameterInfo(
+		Map<PropertyMapper<Q, ?>, List<AssignedParameterInfo<?>>> propertyMapperToAssignedParameterInfo) {
+		this.propertyMapperToAssignedParameterInfo = propertyMapperToAssignedParameterInfo;
+	}
 
-	void setTemplateOwner(QueryTemplate<Q> templateOwner) {
+	@Override
+	public Map<PropertyMapper<Q, ?>, Map<Integer, List<AssignedParameterInfo<?>>>> getPropertyMapperItemIndexToAssignedParameterInfo() {
+		return propertyMapperItemIndexToAssignedParameterInfo;
+	}
+
+	@Override
+	public void setPropertyMapperItemIndexToAssignedParameterInfo(
+		Map<PropertyMapper<Q, ?>, Map<Integer, List<AssignedParameterInfo<?>>>> propertyMapperItemIndexToAssignedParameterInfo) {
+		this.propertyMapperItemIndexToAssignedParameterInfo = propertyMapperItemIndexToAssignedParameterInfo;
+	}
+
+	@Override
+	public void setTemplateOwner(QueryTemplate<Q> templateOwner) {
 		this.templateOwner = templateOwner;
 	}
 
-
-	void setQueryString(String queryString) {
+	@Override
+	public void setQueryString(String queryString) {
 		this.queryString = queryString;
 	}
 
-
-	void setFilter(Object filter) {
+	@Override
+	public void setFilter(Object filter) {
 		this.filter = filter;
-	}
-
-
-	void setPropertyMapperToParameterPositions(
-		Map<PropertyMapper<Q, ?>, List<Integer>> propertyMapperToParameterPositions) {
-		this.propertyMapperToParameterPositions = propertyMapperToParameterPositions;
-	}
-
-
-	void setPropertyMapperItemIndexToParameterPositions(
-		Map<PropertyMapper<Q, ?>, Map<Integer, List<Integer>>> propertyMapperItemIndexToParameterPositions) {
-		this.propertyMapperItemIndexToParameterPositions = propertyMapperItemIndexToParameterPositions;
 	}
 
 //	/**
@@ -113,10 +117,26 @@ public class QueryTemplateState<Q> {
 //	void setIsRepeatablePropertyMapper(Map<PropertyMapper<Q, ?>, Boolean> isRepeatablePropertyMapper) {
 //		this.isRepeatablePropertyMapper = isRepeatablePropertyMapper;
 //	}
-	
-	void makeUnmodifiable() {
-        this.propertyMapperToParameterPositions = Map.copyOf(this.propertyMapperToParameterPositions);
-        this.propertyMapperItemIndexToParameterPositions = Map.copyOf(this.propertyMapperItemIndexToParameterPositions);
+
+	@Override
+	public void makeUnmodifiable() {
+        this.propertyMapperToAssignedParameterInfo = Map.copyOf(this.propertyMapperToAssignedParameterInfo);
+        this.propertyMapperItemIndexToAssignedParameterInfo = Map.copyOf(this.propertyMapperItemIndexToAssignedParameterInfo);
         //this.isRepeatablePropertyMapper = Map.copyOf(this.isRepeatablePropertyMapper);
     }
+
+	/**
+	 * {@link EvalRunner} when {@link QueryTemplateConfig#RESERVED_EVAL_PROPERTY} is used in the query template.
+	 * 
+	 * @return
+	 */
+	@Override
+	public EvalRunner getEvalRunner() {
+		return evalRunner;
+	}
+
+	@Override
+	public void setEvalRunner(EvalRunner evalRunner) {
+		this.evalRunner = evalRunner;
+	}
 }

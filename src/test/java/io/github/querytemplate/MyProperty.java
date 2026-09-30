@@ -6,7 +6,7 @@ package io.github.querytemplate;
 public class MyProperty {
 
     /**
-     * Arbitrary test saying whether it is filled.
+     * Arbitrary test saying whether it is participating in a query template.
      *
      * @return always {@code true}.
      */
