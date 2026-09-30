@@ -435,8 +435,8 @@ public interface QueryTemplateConfig<Q> {
 	
 	/**
 	 * Sets the EvalRunner creator function. This function is used to create an EvalRunner instance based on the QueryTemplateState.
-	 * @param evalRunnerCreator
-	 * @return
+	 * @param evalRunnerCreator the function to create an EvalRunner instance.
+	 * @return This instance for method chaining.
 	 */
 	QueryTemplateConfig<Q> evalRunnerCreator(Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator);
 	

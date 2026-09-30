@@ -128,7 +128,7 @@ public class QueryTemplateStateDefault<Q> implements QueryTemplateStateInternal<
 	/**
 	 * {@link EvalRunner} when {@link QueryTemplateConfig#RESERVED_EVAL_PROPERTY} is used in the query template.
 	 * 
-	 * @return
+	 * @return the evalRunner
 	 */
 	@Override
 	public EvalRunner getEvalRunner() {

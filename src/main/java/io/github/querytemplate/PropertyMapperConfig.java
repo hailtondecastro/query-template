@@ -58,7 +58,7 @@ public interface PropertyMapperConfig<Q, P> {
 	PropertyMapperConfig<Q, P> removeParameter(String parameterName);
 	
 	/**
-	 * Modifies a parameter of the property mapper.<br
+	 * Modifies a parameter of the property mapper.<br>
 	 * Removes the parameter and returns a ParameterMapperConfig instance for modifying it.<br>
 	 * The parameter will be re-added to the property mapper when the ParameterMapperConfig.done() method is called.
 	 * 

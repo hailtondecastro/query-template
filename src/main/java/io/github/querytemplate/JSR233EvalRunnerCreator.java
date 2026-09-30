@@ -14,7 +14,7 @@ import javax.script.ScriptException;
  * Singleton {@link Function}&lt;{@link QueryTemplateState}&lt;?&gt;, {@link EvalRunner}&gt; that creates {@link JSR233EvalRunner} instances.<br>
  * This is necessary if you are using {@link Compilable} {@link ScriptEngine}.<br>
  * {@link JSR233EvalRunner} holds an instance of {@link Bindings} and is keeped alive together with {@link QueryTemplateState}.
- * This is why we need a <code>Function<QueryTemplateState<?>, EvalRunner></code> like
+ * This is why we need a <code>Function&lt;QueryTemplateState&lt;?&gt;, EvalRunner&gt;</code> like
  * {@link JSR233EvalRunnerCreator} as a singleton instance to hold the single {@link ScriptEngine} and various {@link CompiledScript}'s
  * that indirectly run scripts on {@link JSR233EvalRunnerCreator#eval(QueryTemplateState, String, Bindings)}.<br>
  * 
