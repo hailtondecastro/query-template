@@ -1,31 +1,35 @@
 package io.github.querytemplate;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q> {
+import io.github.querytemplate.proxy.ProxyFactoryCreator;
 
-	private QueryTemplateConfig<Q> parent;
+public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig<Q, F> {
+
+	private QueryTemplateConfig<Q, F> parent;
     private String queryTextOriginal;
     /** QueryTemplate used as Helpers to assemble inner parts of the query. */
-    private Map<String, QueryTemplateConfig<Q>> queryHelpers = new LinkedHashMap<>();
+    private Map<String, QueryTemplateConfig<Q, F>> queryHelpers = new LinkedHashMap<>();
 	
 	QueryTemplateConfigQueryHelper(String queryTextOriginal,
-			QueryTemplateConfig<Q> parent) {
+			QueryTemplateConfig<Q, F> parent) {
 		this.parent = parent;
 		this.queryTextOriginal = queryTextOriginal;
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> addQueryHelper(String key,
+	public QueryTemplateConfig<Q, F> addQueryHelper(String key,
 		String content) {
         if (queryTextOriginal == null) {
             throw new QueryTemplateException("'queryHelper' cannot be null: '" + key + "'");
         }
-    	QueryTemplateConfig<Q> helperConfig = new QueryTemplateConfigQueryHelper<>(queryTextOriginal, this);
+    	QueryTemplateConfig<Q, F> helperConfig = new QueryTemplateConfigQueryHelper<>(queryTextOriginal, this);
         if (!this.queryHelpers.containsKey(key)) {
             this.queryHelpers.put(key, helperConfig);
         } else {
@@ -36,7 +40,7 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	}
 
 	@Override
-	public Map<String, QueryTemplateConfig<Q>> getQueryHelpers() {
+	public Map<String, QueryTemplateConfig<Q, F>> getQueryHelpers() {
 		return Collections.unmodifiableMap(this.queryHelpers);
 	}
 	
@@ -46,204 +50,259 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	}
 	
 	@Override
-	public <P> PropertyMapperConfig<Q, P> addMapper(String filterPrp,
+	public <P, I> PropertyMapperConfig<Q, F, P, I> addMapper(String filterPrp,
 		Class<P> propertyClass) {
 		throw new QueryTemplateException("QueryHelper cannot add mappers. Use the parent QueryTemplateConfig to add mappers.");
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> removeMapper(String filterPrp) {
+	public <P, I> PropertyMapperConfig<Q, F, P, I> addMapper(Function<F, P> filterPrp) {
+		throw new QueryTemplateException("QueryHelper cannot add mappers. Use the parent QueryTemplateConfig to add mappers.");
+	}
+	
+	@Override
+	public <C extends Collection<I>, I> PropertyMapperConfig<Q, F, C, I> addMapperC(
+		Function<F, Collection<I>> filterPrp) {
+		throw new QueryTemplateException("QueryHelper cannot add mappers. Use the parent QueryTemplateConfig to add mappers.");
+	}
+	
+	@Override
+	public <C extends List<I>, I> PropertyMapperConfig<Q, F, C, I> addMapperL(
+		Function<F, Collection<I>> filterPrp) {
+		throw new QueryTemplateException("QueryHelper cannot add mappers. Use the parent QueryTemplateConfig to add mappers.");
+	}
+	
+	@Override
+	public <I> PropertyMapperConfig<Q, F, I[], I> addMapperA(Function<F, I[]> filterPrp) {
+		throw new QueryTemplateException("QueryHelper cannot add mappers. Use the parent QueryTemplateConfig to add mappers.");
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q, F> removeMapper(String filterPrp) {
 		throw new QueryTemplateException("QueryHelper cannot remove mappers. Use the parent QueryTemplateConfig to remove mappers.");
 	}
 	
 	@Override
-	public <P> PropertyMapperConfig<Q, P> modifyMapper(String filterPrp, Class<P> propertyClass) {
+	public <P> QueryTemplateConfig<Q, F> removeMapper(Function<F, P> filterPrp) {
+		throw new QueryTemplateException("QueryHelper cannot remove mappers. Use the parent QueryTemplateConfig to remove mappers.");
+	}
+	
+	@Override
+	public <P, I> PropertyMapperConfig<Q, F, P, I> modifyMapper(String filterPrp, Class<P> propertyClass) {
 		throw new QueryTemplateException("QueryHelper cannot modify mappers. Use the parent QueryTemplateConfig to modify mappers.");
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> targetReservedWordPositionalParameterMarker(
+	public <P, I> PropertyMapperConfig<Q, F, P, I> modifyMapper(Function<F, P> filterPrp) {
+		throw new QueryTemplateException("QueryHelper cannot modify mappers. Use the parent QueryTemplateConfig to modify mappers.");
+	}
+	
+	@Override
+	public <C extends Collection<I>, I> PropertyMapperConfig<Q, F, C, I> modifyMapperC(
+		Function<F, Collection<I>> filterPrp) {
+		throw new QueryTemplateException("QueryHelper cannot modify mappers. Use the parent QueryTemplateConfig to modify mappers.");
+	}
+	
+	@Override
+	public <C extends List<I>, I> PropertyMapperConfig<Q, F, C, I> modifyMapperL(
+		Function<F, Collection<I>> filterPrp) {
+		throw new QueryTemplateException("QueryHelper cannot modify mappers. Use the parent QueryTemplateConfig to modify mappers.");
+	}
+	
+	@Override
+	public <I> PropertyMapperConfig<Q, F, I[], I> modifyMapperA(Function<F, I[]> filterPrp) {
+		throw new QueryTemplateException("QueryHelper cannot modify mappers. Use the parent QueryTemplateConfig to modify mappers.");
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q, F> targetReservedWordPositionalParameterMarker(
 		String targetReservedWordPositionalParameterMarker) {
 		this.parent.targetReservedWordPositionalParameterMarker(targetReservedWordPositionalParameterMarker);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> convertNamedToPositionalParameters(boolean convertNamedToPositionalParameters) {
+	public QueryTemplateConfig<Q, F> convertNamedToPositionalParameters(boolean convertNamedToPositionalParameters) {
 		this.parent.convertNamedToPositionalParameters(convertNamedToPositionalParameters);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> targetReservedWordWhere(String targetReservedWordWhere) {
+	public QueryTemplateConfig<Q, F> targetReservedWordWhere(String targetReservedWordWhere) {
 		this.parent.targetReservedWordWhere(targetReservedWordWhere);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> targetReservedWordAnd(String targetReservedWordAnd) {
+	public QueryTemplateConfig<Q, F> targetReservedWordAnd(String targetReservedWordAnd) {
 		this.parent.targetReservedWordAnd(targetReservedWordAnd);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> targetReservedWordOr(String targetReservedWordOr) {
+	public QueryTemplateConfig<Q, F> targetReservedWordOr(String targetReservedWordOr) {
 		this.parent.targetReservedWordOr(targetReservedWordOr);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> targetReservedWordOpenParenthesis(String targetReservedWordOpenParenthesis) {
+	public QueryTemplateConfig<Q, F> targetReservedWordOpenParenthesis(String targetReservedWordOpenParenthesis) {
 		this.parent.targetReservedWordOpenParenthesis(targetReservedWordOpenParenthesis);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> targetReservedWordCloseParenthesis(String targetReservedWordCloseParenthesis) {
+	public QueryTemplateConfig<Q, F> targetReservedWordCloseParenthesis(String targetReservedWordCloseParenthesis) {
 		this.parent.targetReservedWordCloseParenthesis(targetReservedWordCloseParenthesis);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> targetItemListSeparatorMarker(String targetItemListSeparatorMarker) {
+	public QueryTemplateConfig<Q, F> targetItemListSeparatorMarker(String targetItemListSeparatorMarker) {
 		this.parent.targetItemListSeparatorMarker(targetItemListSeparatorMarker);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> parameterUsagePrefix(String parameterUsagePrefix) {
+	public QueryTemplateConfig<Q, F> parameterUsagePrefix(String parameterUsagePrefix) {
 		this.parent.parameterUsagePrefix(parameterUsagePrefix);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> parameterNamePattern(String parameterNamePattern) {
+	public QueryTemplateConfig<Q, F> parameterNamePattern(String parameterNamePattern) {
 		this.parent.parameterNamePattern(parameterNamePattern);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> parameterBasePosition(int parameterBasePosition) {
+	public QueryTemplateConfig<Q, F> parameterBasePosition(int parameterBasePosition) {
 		this.parent.parameterBasePosition(parameterBasePosition);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> filtersToken(String filtersToken) {
+	public QueryTemplateConfig<Q, F> filtersToken(String filtersToken) {
 		this.parent.filtersToken(filtersToken);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> whereToken(String whereToken) {
+	public QueryTemplateConfig<Q, F> whereToken(String whereToken) {
 		this.parent.whereToken(whereToken);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> andToken(String andToken) {
+	public QueryTemplateConfig<Q, F> andToken(String andToken) {
 		this.parent.andToken(andToken);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> orToken(String orToken) {
+	public QueryTemplateConfig<Q, F> orToken(String orToken) {
 		this.parent.orToken(orToken);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> noOperatorToken(String noOperatorToken) {
+	public QueryTemplateConfig<Q, F> noOperatorToken(String noOperatorToken) {
 		this.parent.noOperatorToken(noOperatorToken);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> openParenthesisToken(String openParenthesisToken) {
+	public QueryTemplateConfig<Q, F> openParenthesisToken(String openParenthesisToken) {
 		this.parent.openParenthesisToken(openParenthesisToken);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> closeParenthesisToken(String closeParenthesisToken) {
+	public QueryTemplateConfig<Q, F> closeParenthesisToken(String closeParenthesisToken) {
 		this.parent.closeParenthesisToken(closeParenthesisToken);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> extraToken(String extraToken) {
+	public QueryTemplateConfig<Q, F> extraToken(String extraToken) {
 		this.parent.extraToken(extraToken);
 		return this;
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> propertiesToken(String propertiesToken) {
+	public QueryTemplateConfig<Q, F> propertiesToken(String propertiesToken) {
 		this.parent.propertiesToken(propertiesToken);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> repeatToken(String repeatToken) {
+	public QueryTemplateConfig<Q, F> repeatToken(String repeatToken) {
 		this.parent.repeatToken(repeatToken);
 		return this;
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> criterionToken(String criterionToken) {
+	public QueryTemplateConfig<Q, F> criterionToken(String criterionToken) {
 		this.parent.criterionToken(criterionToken);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> propertiesDelimiterToken(String propertiesDelimiterToken) {
+	public QueryTemplateConfig<Q, F> propertiesDelimiterToken(String propertiesDelimiterToken) {
 		this.parent.propertiesDelimiterToken(propertiesDelimiterToken);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> criterionDelimiterToken(String criterionDelimiterToken) {
+	public QueryTemplateConfig<Q, F> criterionDelimiterToken(String criterionDelimiterToken) {
 		this.parent.criterionDelimiterToken(criterionDelimiterToken);
 		return this;
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> queryHelperToken(String queryHelperToken) {
+	public QueryTemplateConfig<Q, F> queryHelperToken(String queryHelperToken) {
 		this.parent.queryHelperToken(queryHelperToken);
 		return this;
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> reservedAnyProperty(String reservedAnyProperty) {
+	public QueryTemplateConfig<Q, F> reservedAnyProperty(String reservedAnyProperty) {
 		this.parent.reservedAnyProperty(reservedAnyProperty);
 		return this;
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> reservedEvalProperty(String reservedEvalProperty) {
+	public QueryTemplateConfig<Q, F> reservedEvalProperty(String reservedEvalProperty) {
 		this.parent.reservedEvalProperty(reservedEvalProperty);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> escapeCharacter(String escapeCharacter) {
+	public QueryTemplateConfig<Q, F> escapeCharacter(String escapeCharacter) {
 		this.parent.escapeCharacter(escapeCharacter);
 		return this;
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> compactQueryText(boolean compactQueryText) {
+	public QueryTemplateConfig<Q, F> compactQueryText(boolean compactQueryText) {
 		this.parent.compactQueryText(compactQueryText);
 		return this;
 	}
 
 	@Override
-	public QueryTemplateConfig<Q> clearMappers() {
+	public QueryTemplateConfig<Q, F> clearMappers() {
 		throw new QueryTemplateException("QueryHelper cannot clear mappers. Use the parent QueryTemplateConfig to clear mappers.");
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> evalRunnerCreator(Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator) {
+	public QueryTemplateConfig<Q, F> evalRunnerCreator(Function<QueryTemplateState<?, ?>, EvalRunner> evalRunnerCreator) {
 		this.parent.evalRunnerCreator(evalRunnerCreator);
+		return this;
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q, F> proxyFactoryCreator(ProxyFactoryCreator proxyFactoryCreator) {
+		this.parent.proxyFactoryCreator(proxyFactoryCreator);
 		return this;
 	}
 
@@ -303,7 +362,7 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	}
 
 	@Override
-	public Map<String, PropertyMapperConfig<Q, ?>> getMappersConfig() {
+	public Map<String, PropertyMapperConfig<Q, F, ?, ?>> getMappersConfig() {
 		return this.parent.getMappersConfig();
 	}
 
@@ -398,12 +457,17 @@ public class QueryTemplateConfigQueryHelper<Q> implements QueryTemplateConfig<Q>
 	}
 
 	@Override
-	public Function<QueryTemplateState<?>, EvalRunner> getEvalRunnerCreator() {
+	public Function<QueryTemplateState<?, ?>, EvalRunner> getEvalRunnerCreator() {
 		return this.parent.getEvalRunnerCreator();
 	}
+	
+	@Override
+	public ProxyFactoryCreator getProxyFactoryCreator() {
+		return this.parent.getProxyFactoryCreator();
+	}	
 
 	@Override
-	public QueryTemplateConfig<Q> getParent() {
+	public QueryTemplateConfig<Q, F> getParent() {
 		return this.parent;
 	}
 

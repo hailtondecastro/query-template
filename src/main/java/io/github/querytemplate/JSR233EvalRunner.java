@@ -22,7 +22,7 @@ public final class JSR233EvalRunner implements EvalRunner {
 	}
 	
 	@Override
-	public <Q> Object binding(QueryTemplateState<Q> preliminarState,
+	public Object binding(QueryTemplateState<?, ?> preliminaryState,
 		String name,
 		Object value) throws Throwable {
 		Object processedValue = value;
@@ -39,12 +39,12 @@ public final class JSR233EvalRunner implements EvalRunner {
 		return this.bindings.put(name, processedValue);
 	}
 	@Override
-	public <Q> void clearBindings(QueryTemplateState<Q> preliminarState) throws Throwable {
+	public void clearBindings(QueryTemplateState<?, ?> preliminaryState) throws Throwable {
 		this.bindings.clear();
 	}
 	@Override
-	public <Q> Object eval(QueryTemplateState<Q> preliminarState,
+	public Object eval(QueryTemplateState<?, ?> preliminaryState,
 		String script) throws Throwable {
-		return this.creator.eval(preliminarState, script, this.bindings);
+		return this.creator.eval(preliminaryState, script, this.bindings);
 	}
 }

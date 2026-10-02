@@ -1,15 +1,20 @@
 package io.github.querytemplate;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+
+import io.github.querytemplate.proxy.ProxyFactoryCreator;
 
 /**
  * Configuration interface for QueryTemplate. It allows to set the tokens and reserved words used in the query template, as well as to add property mappers and query helpers.
  * @param <Q> Plataform-specific query type (e.g., String for SQL, CriteriaQuery for JPA, etc.).
  * It is not used internally, it is only for strong typing and IDE code completion.
+ * @param <F> Filter type. It is used internally to create proxy objects and resolve properties by lambda expressions, used too for strong typing and IDE code completion.
  */
-public interface QueryTemplateConfig<Q> {
+public interface QueryTemplateConfig<Q, F> {
 
 	/** 
 	 * Default token for the reserved word "filters". Value: <code>"\\[filters\\]"</code>.
@@ -135,32 +140,129 @@ public interface QueryTemplateConfig<Q> {
 	/**
 	 * Adds a property mapper configuration for the specified filter property.
 	 * 
-	 * @param <P> The type of the property to be mapped.
+	 * @param <P> The type of the property to be mapped or the type of collection item in case of a repeatable or unpacked parameter property.
+	 * @param <I> The type of the items in the collection to be mapped.
 	 * @param filterPrp the filter property name.
-	 * @param propertyClass the class of the property. Internally it is not used, it is only for strong typing and IDE code completion.
+	 * @param propertyClass the class of the property. Internally it used to create proxy objects and resolve properties by lambda expressions.
 	 * @return the added mapper configuration.
 	 */
-	<P> PropertyMapperConfig<Q, P> addMapper(String filterPrp,
+	<P, I> PropertyMapperConfig<Q, F, P, I> addMapper(String filterPrp,
 		Class<P> propertyClass);
 
+	/**
+	 * Adds a property mapper configuration for the specified filter property using a lambda expression to resolve the property.
+	 * @param <P> The type of the property to be mapped.
+	 * @param <I> The type of the items in the collection to be mapped.
+	 * @param filterPrp the filter property name.
+	 * @return the added mapper configuration.
+	 */
+	<P, I> PropertyMapperConfig<Q, F, P, I> addMapper(Function<F, P> filterPrp);
+	
+	/**
+	 * Adds a property mapper configuration for the specified filter property using a lambda expression to resolve the property that returns a collection.<br>
+	 * This must be used in case of a repeatable or unpacked parameter property, like a List, Set or Array.<br>
+	 * Adding a property by here you will be able to use {@link PropertyMapperConfig#switchType()}.<br>
+	 * This affects java syntax checking for {@link PropertyMapperConfig#onParticipatesNamed(AssignNamedParameter)} and {@link PropertyMapperConfig#onParticipatesPositional(AssignPositionalParameter)} 
+	 * methods, which will be called for each item in the collection.
+	 * @param <C> The type of the collection to be mapped (List, Set, etc.).
+	 * @param <I> The type of the items in the collection to be mapped.
+	 * @param filterPrp the filter property name.
+	 * @return the added mapper configuration.
+	 */
+	<C extends Collection<I>, I> PropertyMapperConfig<Q, F, C, I> addMapperC(Function<F, Collection<I>> filterPrp);
+	
+	/**
+	 * Similar to {@link #addMapperC(Function)}.
+	 * @param <C> The type of the collection to be mapped (List, Set, etc.).
+	 * @param <I> The type of the items in the collection to be mapped.
+	 * @param filterPrp the filter property name. 
+	 * @return the added mapper configuration.
+	 */
+	<C extends List<I>, I> PropertyMapperConfig<Q, F, C, I> addMapperL(Function<F, Collection<I>> filterPrp);
+	
+	/**
+	 * Similar to {@link #addMapperC(Function)}.
+	 * @param <I> The type of the items in the collection to be mapped.
+	 * @param filterPrp the filter property name. 
+	 * @return the added mapper configuration.
+	 */
+	<I> PropertyMapperConfig<Q, F, I[], I> addMapperA(Function<F, I[]> filterPrp);
+	
+//	<P, I> PropertyMapperConfig<Q, F, P, I> addMapperL(Function<F, List<P>> filterPrp);
+//	<P, I> PropertyMapperConfig<Q, F, P, I> addMapperA(Function<F, P[]> filterPrp);
+	
 	/**
 	 * Removes the mapper configuration for the specified filter property.
 	 * 
 	 * @param filterPrp the filter property name.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> removeMapper(String filterPrp);
+	QueryTemplateConfig<Q, F> removeMapper(String filterPrp);
+	
+	/**
+	 * Removes the mapper configuration for the specified filter property using a
+	 * lambda expression to resolve the property.
+	 * 
+	 * @param <P>       The type of the property to be mapped.
+	 * @param filterPrp the filter property name.
+	 * @return This instance for method chaining.
+	 */
+	<P> QueryTemplateConfig<Q, F> removeMapper(Function<F, P> filterPrp);
 	
 	/**
 	 * Modifies the mapper configuration for the specified filter property.
 	 * 
 	 * @param filterPrp the filter property name.
-	 * @param propertyClass the class of the property. Internally it is not used, it is only for strong typing and IDE code completion.
-	 * @param <P> The type of the property to be mapped. See propertyClass parameter.
+	 * @param propertyClass the class of the property. Internally it used to create proxy objects and resolve properties by lambda expressions. 
+	 * @param <P> The type of the property to be mapped or the type of collection item in case of a repeatable or unpacked parameter property.
+	 * @param <I> The type of the items in the collection to be mapped.
 	 * @return This instance for method chaining.
 	 * 
 	 */
-	<P> PropertyMapperConfig<Q, P> modifyMapper(String filterPrp, Class<P> propertyClass);
+	<P, I> PropertyMapperConfig<Q, F, P, I> modifyMapper(String filterPrp, Class<P> propertyClass);
+	
+	/**
+	 * Modifies the mapper configuration for the specified filter property using a
+	 * lambda expression to resolve the property.
+	 * 
+	 * @param <P>       The type of the property to be mapped.
+	 * @param <I>       The type of the items in the collection to be mapped.
+	 * @param filterPrp the filter property name.
+	 * @return This instance for method chaining.
+	 */
+	<P, I> PropertyMapperConfig<Q, F, P, I> modifyMapper(Function<F, P> filterPrp);
+	
+	/**
+	 * Modify a property mapper configuration for the specified filter property using a lambda expression to resolve the property that returns a collection.<br>
+	 * This must be used in case of a repeatable or unpacked parameter property, like a List, Set or Array.<br>
+	 * Adding a property by here you will be able to use {@link PropertyMapperConfig#switchType()}.<br>
+	 * This affects java syntax checking for {@link PropertyMapperConfig#onParticipatesNamed(AssignNamedParameter)} and {@link PropertyMapperConfig#onParticipatesPositional(AssignPositionalParameter)} 
+	 * methods, which will be called for each item in the collection.
+	 * @param <C> The type of the collection to be mapped (List, Set, etc.).
+	 * @param <I> The type of the items in the collection to be mapped.
+	 * @param filterPrp the filter property name.
+	 * @return This instance for method chaining.
+	 */
+	<C extends Collection<I>, I> PropertyMapperConfig<Q, F, C, I> modifyMapperC(Function<F, Collection<I>> filterPrp);
+	
+	/**
+	 * Similar to {@link #modifyMapperC(Function)}.
+	 * 
+	 * @param <C>       The type of the collection to be mapped (List, Set, etc.).
+	 * @param <I>       The type of the items in the collection to be mapped.
+	 * @param filterPrp Filter property name resolver function.
+	 * @return The modified mapper configuration.
+	 */
+	<C extends List<I>, I> PropertyMapperConfig<Q, F, C, I> modifyMapperL(Function<F, Collection<I>> filterPrp);
+
+	/**
+	 * Similar to {@link #modifyMapperC(Function)}.
+	 * 
+	 * @param <I>       The type of the items in the collection to be mapped.
+	 * @param filterPrp Filter property name resolver function.
+	 * @return The modified mapper configuration.
+	 */
+	<I> PropertyMapperConfig<Q, F, I[], I> modifyMapperA(Function<F, I[]> filterPrp);
 	
 	/**
 	 * Adds another {@link QueryTemplateConfig} inside the current instance. Inside the
@@ -176,7 +278,7 @@ public interface QueryTemplateConfig<Q> {
 	 * {@link #getQueryHelpers()}, {@link #addQueryHelper(String, String)} and 
 	 * {@link #getQueryTextOriginal()}
 	 */
-	QueryTemplateConfig<Q> addQueryHelper(String key,
+	QueryTemplateConfig<Q, F> addQueryHelper(String key,
 		String queryText);
 
 	/**
@@ -185,7 +287,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param targetReservedWordPositionalParameterMarker the target reserved word for positional parameter markers. Default is "?".
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> targetReservedWordPositionalParameterMarker(
+	QueryTemplateConfig<Q, F> targetReservedWordPositionalParameterMarker(
 		String targetReservedWordPositionalParameterMarker);
 
 	/**
@@ -194,7 +296,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param convertNamedToPositionalParameters whether to convert named parameters to positional parameters.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> convertNamedToPositionalParameters(boolean convertNamedToPositionalParameters);
+	QueryTemplateConfig<Q, F> convertNamedToPositionalParameters(boolean convertNamedToPositionalParameters);
 
 	/**
 	 * Sets the target reserved word for "where". Default is "where".
@@ -202,7 +304,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param targetReservedWordWhere see {@link #TARGET_RESERVED_WORD_WHERE}.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> targetReservedWordWhere(String targetReservedWordWhere);
+	QueryTemplateConfig<Q, F> targetReservedWordWhere(String targetReservedWordWhere);
 
 	/**
 	 * Sets the target reserved word for "and". Default is "and".
@@ -210,7 +312,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param targetReservedWordAnd see {@link #TARGET_RESERVED_WORD_AND}.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> targetReservedWordAnd(String targetReservedWordAnd);
+	QueryTemplateConfig<Q, F> targetReservedWordAnd(String targetReservedWordAnd);
 
 	/**
 	 * Sets the target reserved word for "or". Default is "or".
@@ -218,7 +320,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param targetReservedWordOr see {@link #TARGET_RESERVED_WORD_OR}.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> targetReservedWordOr(String targetReservedWordOr);
+	QueryTemplateConfig<Q, F> targetReservedWordOr(String targetReservedWordOr);
 
 	/**
 	 * Sets the target reserved word for open parenthesis. Default is "(".
@@ -226,7 +328,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param targetReservedWordOpenParenthesis see {@link #TARGET_RESERVED_WORD_OPEN_PARENTHESIS}.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> targetReservedWordOpenParenthesis(String targetReservedWordOpenParenthesis);
+	QueryTemplateConfig<Q, F> targetReservedWordOpenParenthesis(String targetReservedWordOpenParenthesis);
 
 	/**
 	 * Sets the target reserved word for close parenthesis. Default is ")".
@@ -234,7 +336,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param targetReservedWordCloseParenthesis see {@link #TARGET_RESERVED_WORD_CLOSE_PARENTHESIS}.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> targetReservedWordCloseParenthesis(String targetReservedWordCloseParenthesis);
+	QueryTemplateConfig<Q, F> targetReservedWordCloseParenthesis(String targetReservedWordCloseParenthesis);
 
 	/**
 	 * Sets the target reserved word for positional parameter markers. Default is "?".
@@ -243,7 +345,7 @@ public interface QueryTemplateConfig<Q> {
 	 *                                      Default is {@link #TARGET_ITEM_LIST_SEPARATOR_MARKER}.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> targetItemListSeparatorMarker(String targetItemListSeparatorMarker);
+	QueryTemplateConfig<Q, F> targetItemListSeparatorMarker(String targetItemListSeparatorMarker);
 
 	/**
 	 * Sets the prefix used for parameter usage. Default is ":".
@@ -251,7 +353,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param parameterUsagePrefix the prefix used for parameter usage. Default is ":".
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> parameterUsagePrefix(String parameterUsagePrefix);
+	QueryTemplateConfig<Q, F> parameterUsagePrefix(String parameterUsagePrefix);
 
 	/**
 	 * Sets the pattern used for parameter names. Default is "\\b([\\w-]+)\\b".
@@ -259,7 +361,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param parameterNamePattern see {@link #PARAMETER_NAME_PATTERN}.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> parameterNamePattern(String parameterNamePattern);
+	QueryTemplateConfig<Q, F> parameterNamePattern(String parameterNamePattern);
 
 	/**
 	 * Sets the base index for parameters. Default is 1.
@@ -267,7 +369,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param parameterBasePosition the base index for parameters. Default is 1.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> parameterBasePosition(int parameterBasePosition);
+	QueryTemplateConfig<Q, F> parameterBasePosition(int parameterBasePosition);
 
 	/**
 	 * Sets the filters token pattern. See {@link #FILTERS_TOKEN} for the default value.
@@ -275,7 +377,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param filtersToken the filters token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> filtersToken(String filtersToken);
+	QueryTemplateConfig<Q, F> filtersToken(String filtersToken);
 
 	/**
 	 * Sets the where token pattern. See {@link #WHERE_TOKEN} for the default value.
@@ -283,7 +385,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param whereToken the where token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> whereToken(String whereToken);
+	QueryTemplateConfig<Q, F> whereToken(String whereToken);
 
 	/**
 	 * Sets the properties token pattern. See {@link #PROPERTIES_TOKEN} for the
@@ -292,7 +394,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param propertiesToken the properties token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> propertiesToken(String propertiesToken);
+	QueryTemplateConfig<Q, F> propertiesToken(String propertiesToken);
 	
 	/**
 	 * Sets the repeat token pattern. See {@link #REPEAT_TOKEN} for the default
@@ -301,7 +403,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param repeatToken the repeat token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> repeatToken(String repeatToken);
+	QueryTemplateConfig<Q, F> repeatToken(String repeatToken);
 	
 	/**
 	 * Sets the query helper token pattern. See {@link #QUERY_HELPER_TOKEN} for the
@@ -310,7 +412,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param queryHelperToken the query helper token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> queryHelperToken(String queryHelperToken);
+	QueryTemplateConfig<Q, F> queryHelperToken(String queryHelperToken);
 	
 	
 	/**
@@ -319,14 +421,14 @@ public interface QueryTemplateConfig<Q> {
 	 * @param andToken the and token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> andToken(String andToken);
+	QueryTemplateConfig<Q, F> andToken(String andToken);
 
 	/**
 	 * Sets the or token pattern. See {@link #OR_TOKEN} for the default value.
 	 * @param orToken the or token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> orToken(String orToken);
+	QueryTemplateConfig<Q, F> orToken(String orToken);
 
 	/**
 	 * Sets the no operator token pattern. See {@link #NO_OPERATOR_TOKEN} for the
@@ -335,7 +437,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param noOperatorToken the no operator token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> noOperatorToken(String noOperatorToken);
+	QueryTemplateConfig<Q, F> noOperatorToken(String noOperatorToken);
 
 	/**
 	 * Sets the open parenthesis token pattern. See {@link #OPEN_PARENTHESIS_TOKEN}
@@ -344,7 +446,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param openParenthesisToken the open parenthesis token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> openParenthesisToken(String openParenthesisToken);
+	QueryTemplateConfig<Q, F> openParenthesisToken(String openParenthesisToken);
 
 	/**
 	 * Sets the close parenthesis token pattern. See
@@ -353,7 +455,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param closeParenthesisToken the close parenthesis token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> closeParenthesisToken(String closeParenthesisToken);
+	QueryTemplateConfig<Q, F> closeParenthesisToken(String closeParenthesisToken);
 
 	/**
 	 * Sets the extra token pattern. See {@link #EXTRA_TOKEN} for the default value.
@@ -361,7 +463,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param extraToken the extra token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> extraToken(String extraToken);
+	QueryTemplateConfig<Q, F> extraToken(String extraToken);
 
 	/**
 	 * Sets the criterion token pattern. See {@link #CRITERION_TOKEN} for the
@@ -370,7 +472,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param criterionToken the criterion token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> criterionToken(String criterionToken);
+	QueryTemplateConfig<Q, F> criterionToken(String criterionToken);
 	
 	/**
 	 * Sets the parameter delimiter token pattern. See
@@ -379,7 +481,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param propertiesDelimiterToken the parameter delimiter token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> propertiesDelimiterToken(String propertiesDelimiterToken);
+	QueryTemplateConfig<Q, F> propertiesDelimiterToken(String propertiesDelimiterToken);
 
 	/**
 	 * Sets the criterion delimiter token pattern. See
@@ -388,7 +490,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param criterionDelimiterToken the criterion delimiter token pattern.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> criterionDelimiterToken(String criterionDelimiterToken);
+	QueryTemplateConfig<Q, F> criterionDelimiterToken(String criterionDelimiterToken);
 
 	/**
 	 * Sets the escape character. See {@link #ESCAPE_CHARACTER} for the default
@@ -397,7 +499,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param escapeCharacter the escape character.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> escapeCharacter(String escapeCharacter);
+	QueryTemplateConfig<Q, F> escapeCharacter(String escapeCharacter);
 	
 	/**
 	 * Sets the reserved word for `any` property markers. See
@@ -406,7 +508,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param reservedAnyProperty the reserved word for `any` parameter markers.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> reservedAnyProperty(String reservedAnyProperty);
+	QueryTemplateConfig<Q, F> reservedAnyProperty(String reservedAnyProperty);
 	
 	/**
 	 * Sets the reserved word for `eval` property markers. See
@@ -415,7 +517,7 @@ public interface QueryTemplateConfig<Q> {
 	 * @param reservedEvalProperty the reserved word for `eval` parameter markers.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> reservedEvalProperty(String reservedEvalProperty);
+	QueryTemplateConfig<Q, F> reservedEvalProperty(String reservedEvalProperty);
 
 	/**
 	 * Sets whether to compact the query text. If true, the query text will be
@@ -424,28 +526,38 @@ public interface QueryTemplateConfig<Q> {
 	 * @param compactQueryText whether to compact the query text.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> compactQueryText(boolean compactQueryText);
+	QueryTemplateConfig<Q, F> compactQueryText(boolean compactQueryText);
 
 	/**
 	 * Clears all property mappers from the configuration.
 	 * 
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> clearMappers();
+	QueryTemplateConfig<Q, F> clearMappers();
 	
 	/**
 	 * Sets the EvalRunner creator function. This function is used to create an EvalRunner instance based on the QueryTemplateState.
-	 * @param evalRunnerCreator the function to create an EvalRunner instance.
+	 * @param evalRunnerCreator the EvalRunner creator function.
 	 * @return This instance for method chaining.
 	 */
-	QueryTemplateConfig<Q> evalRunnerCreator(Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator);
+	QueryTemplateConfig<Q, F> evalRunnerCreator(Function<QueryTemplateState<?, ?>, EvalRunner> evalRunnerCreator);
+	
+	/**
+	 * Sets the ProxyFactoryCreator instance. This instance is used to create proxy
+	 * objects for the filter type.<br>
+	 * See {@link #proxyFactoryCreator(ProxyFactoryCreator)} for more details.
+	 * 
+	 * @param proxyFactoryCreator the ProxyFactoryCreator instance.
+	 * @return This instance for method chaining.
+	 */
+	QueryTemplateConfig<Q, F> proxyFactoryCreator(ProxyFactoryCreator proxyFactoryCreator);
 	
 	/**
 	 * Gets the parent configuration after defining a QueryHelper. If this is the root configuration, returns null.
 	 * 
 	 * @return Return for the parent config after define QueryHelper. If this is the root config, return null.
 	 */
-	QueryTemplateConfig<Q> getParent();
+	QueryTemplateConfig<Q, F> getParent();
 
 	/**
 	 * Gets the filters token pattern. See {@link #FILTERS_TOKEN} for the default value.
@@ -529,14 +641,14 @@ public interface QueryTemplateConfig<Q> {
 	 * 
 	 * @return the map of property mappers configurations.
 	 */
-	Map<String, PropertyMapperConfig<Q, ?>> getMappersConfig();
+	Map<String, PropertyMapperConfig<Q, F, ?, ?>> getMappersConfig();
 
 	/**
 	 * Gets the query helpers map.
 	 * 
 	 * @return the query helpers map.
 	 */
-	Map<String, QueryTemplateConfig<Q>> getQueryHelpers();
+	Map<String, QueryTemplateConfig<Q, F>> getQueryHelpers();
 
 	/**
 	 * Gets the target reserved word for "where". See {@link #TARGET_RESERVED_WORD_WHERE} for the default value.
@@ -680,17 +792,30 @@ public interface QueryTemplateConfig<Q> {
 	 * 
 	 * @return the EvalRunner creator function.
 	 */
-	Function<QueryTemplateState<?>, EvalRunner> getEvalRunnerCreator();	
-
+	Function<QueryTemplateState<?, ?>, EvalRunner> getEvalRunnerCreator();
+	
+	/**
+	 * Gets the ProxyFactoryCreator instance. This instance is used to create proxy
+	 * objects for the filter class, allowing to resolve properties by lambda
+	 * expressions.<br>
+	 * Its can be implemented using javassit, cglib, jdk dynamic proxy, etc. 
+	 * There is no default implementation to keep the library light and flexible.
+	 * 
+	 * @return the ProxyFactoryCreator instance.
+	 */
+	ProxyFactoryCreator getProxyFactoryCreator();
+	
 	/**
 	 * Creates a new instance of QueryTemplateConfig with the specified query text and query class.
 	 * 
 	 * @param <SQ> The type of the query. It is not used internally, it is only for strong typing and IDE code completion.
+	 * @param <SF> The type of the filter. It is used internally to create proxy objects and resolve properties by lambda expressions, it is only for strong typing and IDE code completion.
 	 * @param queryText the query text.
 	 * @param queryClass the class of the query. Internally it is not used, it is only for strong typing and IDE code completion.
+	 * @param filterClass the class of the filter. It is used internally to create proxy objects and resolve properties by lambda expressions, used too for strong typing and IDE code completion.
 	 * @return a new instance of QueryTemplateConfig.
 	 */
-	static <SQ> QueryTemplateConfig<SQ> of(String queryText, Class<SQ> queryClass) {
-		return new QueryTemplateConfigRoot<SQ>(queryText);
+	static <SQ, SF> QueryTemplateConfig<SQ, SF> of(String queryText, Class<SQ> queryClass, Class<SF> filterClass) {
+		return new QueryTemplateConfigRoot<SQ, SF>(queryText, filterClass);
 	}
 }

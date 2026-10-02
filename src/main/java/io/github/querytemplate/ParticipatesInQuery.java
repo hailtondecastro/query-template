@@ -5,7 +5,7 @@ package io.github.querytemplate;
  * The filter is a generic object that can be a POJO, Map, or any other type. The property is identified by its name (String).
  */
 @FunctionalInterface
-public interface ParticipatesInQuery {
+public interface ParticipatesInQuery<F> {
 
     /**
      * Checks whether the property is participating in the query.
@@ -14,5 +14,5 @@ public interface ParticipatesInQuery {
      * @param filterPrp the property to be evaluated.
      * @return {@code true} if the property is considered participating in the query
      */
-    boolean isParticipating(Object filter, String filterPrp);
+    boolean isParticipating(F filter, String filterPrp);
 }

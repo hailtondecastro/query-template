@@ -9,8 +9,11 @@ package io.github.querytemplate;
  *            typing and IDE code completion.
  * @param <P> The type of the property to be mapped. It is not used internally,
  *            it is only for strong typing and IDE code completion.
+ * @param <I> The type of the items in the collection/list/array property to be mapped. It is not used
+ *           internally, it is only for strong typing and IDE code completion.                       
+ * @param <F> Filter type. It is used internally to create proxy objects and resolve
  */
-public interface PropertyMapperConfigInternal<Q, P> extends PropertyMapperConfig<Q, P> {	
+public interface PropertyMapperConfigInternal<Q, F, P, I> extends PropertyMapperConfig<Q, F, P, I> {	
 
 	/**
 	 * Updates a parameter of the property mapper.<br>
@@ -19,5 +22,5 @@ public interface PropertyMapperConfigInternal<Q, P> extends PropertyMapperConfig
 	 * @param parameterMapperConfig the configuration of the parameter to update.
 	 * @return this instance for method chaining.
 	 */
-	ParameterMapperConfig<Q, P> updateParameter(ParameterMapperConfig<Q, P> parameterMapperConfig);
+	ParameterMapperConfig<Q, F, P, I> updateParameter(ParameterMapperConfig<Q, F, P, I> parameterMapperConfig);
 }

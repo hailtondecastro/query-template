@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
+class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
 
 	/** Used to temporarily replace the character. */
     private static String TEMPORARY_ESCAPE_PREFIX = "_PREF_TEMP_ESC_";
@@ -22,7 +22,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
     private static final Logger LOG = LoggerFactory.getLogger(QueryTemplateDefault.class);
 
     /** Possible parameters in the query. */
-    private Set<PropertyMapper<Q, ?>> usableMappers = null;
+    private Set<PropertyMapper<Q, F, ?>> usableMappers = null;
 
     //private boolean compactQueryText = false;
 
@@ -35,32 +35,32 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
     private List<QueryTemplateTokenPojo> queryTextTokens;
 
     /** QueryTemplate used as Helpers to assemble inner parts of the query. */
-    private Map<String, QueryTemplateInternal<Q>> queryHelpers = new LinkedHashMap<>();
+    private Map<String, QueryTemplateInternal<Q, F>> queryHelpers = new LinkedHashMap<>();
 
     /** Query after compaction and substitution. */
     private String queryTextEscapedSubs = "";
     
-    //private List<PropertyMapper<Q, ?>> mappers = new ArrayList<>();
-    //private Map<String, PropertyMapper<Q, ?>> mappersMap;
-    private Map<String, PropertyMapper<Q, ?>> mappersByParamNameMap;
-    private Map<String, PropertyMapper<Q, ?>> mappersByPropertyNameMap;
+    //private List<PropertyMapper<Q, F, ?>> mappers = new ArrayList<>();
+    //private Map<String, PropertyMapper<Q, F, ?>> mappersMap;
+    private Map<String, PropertyMapper<Q, F, ?>> mappersByParamNameMap;
+    private Map<String, PropertyMapper<Q, F, ?>> mappersByPropertyNameMap;
     
     //private String sqlHqlQueryOriginal;
     
-    private QueryTemplateConfig<Q> config;
+    private QueryTemplateConfig<Q, F> config;
     
-    private QueryTemplateInternal<Q> parent;
+    private QueryTemplateInternal<Q, F> parent;
     
     /**
      * TODO: Make a QueryTemplateBuilder Using the Builder Pattern to make it easier to build the object with all the parameters sharing then with QueryTemplateConfig.
      * Builds the object passing all the possible parameters.
      */
-    QueryTemplateDefault(QueryTemplateConfig<Q> config) {
+    QueryTemplateDefault(QueryTemplateConfig<Q, F> config) {
 		this.config = config;
         this.setUp();
     }
     
-    QueryTemplateDefault(QueryTemplateConfig<Q> config, QueryTemplateInternal<Q> parent) {
+    QueryTemplateDefault(QueryTemplateConfig<Q, F> config, QueryTemplateInternal<Q, F> parent) {
 		this.config = config;
 		this.parent = parent;
         this.setUp();
@@ -77,8 +77,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 		this.mappersByParamNameMap = new LinkedHashMap<>();
 		this.mappersByPropertyNameMap = new LinkedHashMap<>();
     	for (String propertyNameItem : this.config.getMappersConfig().keySet()) {
-    		PropertyMapperConfig<Q, Object> mapperConfig = (PropertyMapperConfig<Q, Object>) config.getMappersConfig().get(propertyNameItem);
-    		PropertyMapper<Q, Object> mapper = 
+    		PropertyMapperConfig<Q, F, Object, Object> mapperConfig = (PropertyMapperConfig<Q, F, Object, Object>) config.getMappersConfig().get(propertyNameItem);
+    		PropertyMapper<Q, F, Object> mapper = 
     				new PropertyMapper<>(propertyNameItem);
     		mapper
     			.onParticipatesNamed(mapperConfig.getOnParticipatesNamed())
@@ -90,14 +90,16 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
     				.unpackListItems(false);
     		} else {
     			for (String parameterName : mapperConfig.getParameterMappers().keySet()) {
-    				ParameterMapperConfig<Q, Object> parameterMapperConfig = (ParameterMapperConfig<Q, Object>) mapperConfig.getParameterMappers().get(parameterName);
+    				ParameterMapperConfig<Q, F, Object, Object> parameterMapperConfig = (ParameterMapperConfig<Q, F, Object, Object>) mapperConfig.getParameterMappers().get(parameterName);
     				mapper.addParameter(parameterName)
     					.repeater(parameterMapperConfig.isRepeater())
-    					.unpackListItems(parameterMapperConfig.isUnpackListItems());
+    					.unpackListItems(parameterMapperConfig.isUnpackListItems())
+    					.onParticipatesNamed(parameterMapperConfig.getOnParticipatesNamed())
+    					.onParticipatesPositional(parameterMapperConfig.getOnParticipatesPositional());
     			}
     		}
 			for (String parameterName : mapper.getParameterMappers().keySet()) {
-				ParameterMapper<Q, Object> parameterMapper = mapper.getParameterMappers().get(parameterName);
+				ParameterMapper<Q, F, Object> parameterMapper = mapper.getParameterMappers().get(parameterName);
 	    		this.mappersByParamNameMap.put(parameterMapper.getParameterName(), mapper);
 			}
     		this.mappersByPropertyNameMap.put(mapper.getFilterPrp(), mapper);
@@ -151,9 +153,9 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      */
     private void setUpQueryHelpers() {
     	for (String queryHelperKey : this.config.getQueryHelpers().keySet()) {
-    		QueryTemplateConfig<Q> queryHelperConfig = this.config.getQueryHelpers().get(queryHelperKey);
+    		QueryTemplateConfig<Q, F> queryHelperConfig = this.config.getQueryHelpers().get(queryHelperKey);
     		// Implicitly recursive, since the QueryTemplate constructor calls setUp(), which calls setUpQueryHelpers() again for the inner query helpers.
-    		QueryTemplateInternal<Q> queryTemplateHelper = (QueryTemplateInternal<Q>) QueryTemplateInternal.of(queryHelperConfig, this);
+    		QueryTemplateInternal<Q, F> queryTemplateHelper = (QueryTemplateInternal<Q, F>) QueryTemplateInternal.of(queryHelperConfig, this);
     		
     		this.queryHelpers.put(
     				queryHelperKey,
@@ -201,7 +203,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 //     *
 //     * @param sqlHqlQuery query containing the tokens for substitution.
 //     */
-//    public QueryTemplate(String sqlHqlQuery, List<PropertyMapper<Q, ?>> mappers) {
+//    public QueryTemplate(String sqlHqlQuery, List<PropertyMapper<Q, F, ?>> mappers) {
 //        this(sqlHqlQuery, mappers, FILTERS_TOKEN, WHERE_TOKEN, AND_TOKEN,
 //                OR_TOKEN, NO_OPERATOR_TOKEN, OPEN_PARENTHESIS_TOKEN, CLOSE_PARENTHESIS_TOKEN,
 //                EXTRA_TOKEN, PARAM_TOKEN, REPEAT_TOKEN, CRITERION_TOKEN, PARAM_DELIMITER_TOKEN,
@@ -222,7 +224,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 //     * @param sqlHqlQuery        query containing the tokens for substitution.
 //     * @param compactSqlHqlQuery whether the query must be compacted.
 //     */
-//    public QueryTemplate(String sqlHqlQuery, List<PropertyMapper<Q, ?>> mappers, boolean compactSqlHqlQuery) {
+//    public QueryTemplate(String sqlHqlQuery, List<PropertyMapper<Q, F, ?>> mappers, boolean compactSqlHqlQuery) {
 //        this(sqlHqlQuery, mappers, FILTERS_TOKEN, WHERE_TOKEN, AND_TOKEN,
 //                OR_TOKEN, NO_OPERATOR_TOKEN, OPEN_PARENTHESIS_TOKEN, CLOSE_PARENTHESIS_TOKEN,
 //                EXTRA_TOKEN, PARAM_TOKEN, REPEAT_TOKEN, CRITERION_TOKEN, PARAM_DELIMITER_TOKEN,
@@ -246,11 +248,11 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      * @param filterObject     the filter object.
      * @param query            the query to set the parameters on.
      */
-    void setParamQueryNonRecursive(QueryTemplateStateInternal<Q> state, Q query, Map<Integer, Action> positionalParameterActions) {
+    void setParamQueryNonRecursive(QueryTemplateStateInternal<Q, F> state, Q query, Map<Integer, Action> positionalParameterActions) {
         for (String parameterName : this.mappersByParamNameMap.keySet()) {
-        	PropertyMapper<Q, ?> mapperItem = this.mappersByParamNameMap.get(parameterName);
-        	PropertyMapper<Q, Object> mapperItemCasted = (PropertyMapper<Q, Object>) mapperItem;
-        	ParameterMapper<Q, Object> parameterMapper = mapperItemCasted.getParameterMappers().get(parameterName);
+        	PropertyMapper<Q, F, ?> mapperItem = this.mappersByParamNameMap.get(parameterName);
+        	PropertyMapper<Q, F, Object> mapperItemCasted = (PropertyMapper<Q, F, Object>) mapperItem;
+        	ParameterMapper<Q, F, Object> parameterMapper = mapperItemCasted.getParameterMappers().get(parameterName);
             if (LOG.isDebugEnabled()) {
             	LOG.debug("Tests whether the parameter is used in the query and whether it is participating in the query, based on the filter object.");
             	if (!this.usableMappers.contains(mapperItemCasted)) {
@@ -287,23 +289,60 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                     	int repeatIndex = 0;
                     	for (Object valueItem : valueColl) {
                     		if (!this.config.isConvertNamedToPositionalParameters()) {
-                    			if (mapperItemCasted.getOnParticipatesNamed() != null
-                    					&& state.getQueryString().contains(this.config.getParameterUsagePrefix() + parameterMapper.getParameterName())) {
+                    			if (state.getQueryString().contains(this.config.getParameterUsagePrefix() + parameterMapper.getParameterName())
+                    					&& (mapperItemCasted.getOnParticipatesNamed() != null
+                    						|| parameterMapper.getOnParticipatesNamed() != null
+                						)
+                					) {
                         			AssignedParameterInfoInternal<?> assignedParameterInfo = new AssignedParameterInfoDefault<>();
                         			assignedParameterInfo.setPosition(null);
                         			assignedParameterInfo.setIndex(repeatIndex);
                         			assignedParameterInfo.setName(parameterMapper.getParameterName());
                         			assignedParameterInfo.setUnpackedRepeatedName(parameterMapper.getParameterName() + "_" + repeatIndex);
-                    				mapperItemCasted.getOnParticipatesNamed().accept(query, assignedParameterInfo.getUnpackedRepeatedName(), valueItem, (AssignedParameterInfo<Object>) assignedParameterInfo);
+                        			
+                        			if (mapperItemCasted.getOnParticipatesNamed() != null) {
+                        				mapperItemCasted.getOnParticipatesNamed().accept(
+                        						query, 
+                        						assignedParameterInfo.getUnpackedRepeatedName(), 
+                        						valueItem, 
+                        						(AssignedParameterInfo<Object>) assignedParameterInfo
+                						);
+                        			}
+									if (parameterMapper.getOnParticipatesNamed() != null) {
+										parameterMapper.getOnParticipatesNamed().accept(
+												query,
+												assignedParameterInfo.getUnpackedRepeatedName(), valueItem,
+												(AssignedParameterInfo<Object>) assignedParameterInfo
+										);
+									}
+                        			
                     			}
                     		} else {
-                    			if (mapperItemCasted.getOnParticipatesPositional() != null) {
+                    			if (mapperItemCasted.getOnParticipatesPositional() != null
+                    					|| parameterMapper.getOnParticipatesPositional() != null) {
                     				List<AssignedParameterInfo<?>> assignedParameterInfos = state
                     						.getPropertyMapperItemIndexToAssignedParameterInfo().get(mapperItemCasted)
                     						.get(repeatIndex);
                     				for (AssignedParameterInfo<?> assignedParameterInfo : assignedParameterInfos) {
                     					// delaying the execution of the parameter setting to avoid issues with the order of execution and potential side effects
-                    					positionalParameterActions.put(assignedParameterInfo.getPosition(), () -> mapperItemCasted.getOnParticipatesPositional().accept(query, assignedParameterInfo.getPosition(), valueItem, (AssignedParameterInfo<Object>) assignedParameterInfo));
+										if (mapperItemCasted.getOnParticipatesPositional() != null) {
+											positionalParameterActions.put(
+													assignedParameterInfo.getPosition(),
+													() -> mapperItemCasted.getOnParticipatesPositional()
+														.accept(query,
+																assignedParameterInfo.getPosition(),
+																valueItem,
+																(AssignedParameterInfo<Object>) assignedParameterInfo));
+										}
+										if (parameterMapper.getOnParticipatesPositional() != null) {
+											positionalParameterActions.put(
+													assignedParameterInfo.getPosition(),
+													() -> parameterMapper.getOnParticipatesPositional()
+														.accept(query,
+																assignedParameterInfo.getPosition(), 
+																valueItem,
+																(AssignedParameterInfo<Object>) assignedParameterInfo));
+										}
                     				}
                     			}
                     		}
@@ -313,21 +352,61 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                     	// nothing
                     } else {
                     	if (!this.config.isConvertNamedToPositionalParameters()) {
-                    		if (mapperItemCasted.getOnParticipatesNamed() != null
-                    				&& state.getQueryString().contains(this.config.getParameterUsagePrefix() + parameterMapper.getParameterName())) {
+                    		if (state.getQueryString().contains(this.config.getParameterUsagePrefix() + parameterMapper.getParameterName())
+                    				&& (mapperItemCasted.getOnParticipatesNamed() != null
+                    					|| parameterMapper.getOnParticipatesNamed() != null
+                    				)
+                    			) {
                     			AssignedParameterInfoInternal<?> assignedParameterInfo = new AssignedParameterInfoDefault<>();
                     			assignedParameterInfo.setPosition(null);
                     			assignedParameterInfo.setIndex(null);
                     			assignedParameterInfo.setName(parameterMapper.getParameterName());
                     			assignedParameterInfo.setUnpackedRepeatedName(null);
-                    			mapperItemCasted.getOnParticipatesNamed().accept(query, parameterMapper.getParameterName(), value, (AssignedParameterInfo<Object>) assignedParameterInfo);
-                    		}                    		
+								if (mapperItemCasted.getOnParticipatesNamed() != null) {
+									mapperItemCasted.getOnParticipatesNamed()
+										.accept(query, 
+												parameterMapper.getParameterName(), 
+												value, 
+												(AssignedParameterInfo<Object>) assignedParameterInfo
+									);
+								}
+								if (parameterMapper.getOnParticipatesNamed() != null) {
+									parameterMapper.getOnParticipatesNamed()
+										.accept(query,
+												parameterMapper.getParameterName(), 
+												value,
+												(AssignedParameterInfo<Object>) assignedParameterInfo
+										);
+								}
+                    		}		
                     	} else {
-                    		if (mapperItemCasted.getOnParticipatesPositional() != null) {
+                    		if (mapperItemCasted.getOnParticipatesPositional() != null
+                    				|| parameterMapper.getOnParticipatesPositional() != null) {
                     			List<AssignedParameterInfo<?>> parameterPositions = state.getPropertyMapperToAssignedParameterInfo().get(mapperItemCasted);
                     			for (AssignedParameterInfo<?> assignedParameterInfo : parameterPositions) {
                     				// delaying the execution of the parameter setting to avoid issues with the order of execution and potential side effects
-                    				positionalParameterActions.put(assignedParameterInfo.getPosition(), () -> mapperItemCasted.getOnParticipatesPositional().accept(query, assignedParameterInfo.getPosition(), value, (AssignedParameterInfo<Object>) assignedParameterInfo));
+									if (mapperItemCasted.getOnParticipatesPositional() != null) {
+	                    				positionalParameterActions.put(
+	                    						assignedParameterInfo.getPosition(), 
+	                    						() -> mapperItemCasted.getOnParticipatesPositional()
+	                    							.accept(query, 
+	                    									assignedParameterInfo.getPosition(), 
+	                    									value, 
+	                    									(AssignedParameterInfo<Object>) assignedParameterInfo
+                									)
+                        				);
+									}
+									if (parameterMapper.getOnParticipatesPositional() != null) {
+										positionalParameterActions.put(
+                                                assignedParameterInfo.getPosition(),
+                                                () -> parameterMapper.getOnParticipatesPositional()
+                                                    .accept(query,
+                                                            assignedParameterInfo.getPosition(),
+                                                            value,
+                                                            (AssignedParameterInfo<Object>) assignedParameterInfo
+                                                    )
+                                        );
+									}
                     			}
                     		}
                     	}
@@ -340,11 +419,11 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
     }
     
     @Override
-    public void setParamQueryRecursive(QueryTemplateState<Q> state, Q query, Map<Integer, Action> positionalParameterActions) {
+    public void setParamQueryRecursive(QueryTemplateState<Q, F> state, Q query, Map<Integer, Action> positionalParameterActions) {
         // Setting the parameters of the inner queries.
         for (String queryHelperKey : this.queryHelpers.keySet()) {
             if (this.queryHelpers.containsKey(queryHelperKey)) {
-            	QueryTemplateInternal<Q> queryHelper = this.queryHelpers.get(queryHelperKey);
+            	QueryTemplateInternal<Q, F> queryHelper = this.queryHelpers.get(queryHelperKey);
                 queryHelper.setParamQueryRecursive(state, query, positionalParameterActions);
             } else {
                 throw new QueryTemplateException(
@@ -352,7 +431,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
             }
         }
 
-        this.setParamQueryNonRecursive((QueryTemplateStateInternal<Q>) state, query, positionalParameterActions);
+        this.setParamQueryNonRecursive((QueryTemplateStateInternal<Q, F>) state, query, positionalParameterActions);
     }
 
     /**
@@ -363,7 +442,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      * @param query        the query to set the parameters on.
      */
     @Override
-	public void setParamQuery(QueryTemplateState<Q> state, Q query,  Map<Integer, Action> positionalParameterActions) {
+	public void setParamQuery(QueryTemplateState<Q, F> state, Q query,  Map<Integer, Action> positionalParameterActions) {
     	this.setParamQueryRecursive(state, query, positionalParameterActions);
     	
 		if (this.config.isConvertNamedToPositionalParameters()) {
@@ -385,12 +464,12 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      * @param query 	the query to set the parameters on.
      */
     @Override
-	public void setParamQuery(QueryTemplateState<Q> state, Q query) {
+	public void setParamQuery(QueryTemplateState<Q, F> state, Q query) {
     	Map<Integer, Action> positionalParameterActions = new LinkedHashMap<>();
     	this.setParamQuery(state, query, positionalParameterActions);
     }
 
-	private void processPositionalParameters(QueryTemplateStateInternal<Q> state) {
+	private void processPositionalParameters(QueryTemplateStateInternal<Q, F> state) {
 		if (this.config.isConvertNamedToPositionalParameters()) {
 			String parameterWithIndexSufixPatternStr = this.config.getParameterUsagePrefix() + this.config.getParameterNamePattern();
 			String indexSufixPatternStr = "^(.+)_(\\d+)$";
@@ -428,8 +507,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 					throw new QueryTemplateException("Parameter with index sufix '" + parameterWithIndexSufix + "' and parameter name '" + parameterName + "' are both present in the mappers map. This is not allowed.");
                 }
 
-				PropertyMapper<Q, ?> mapperItem = this.mappersByParamNameMap.get(parameterName);
-				ParameterMapper<Q, ?> parameterMapper = mapperItem.getParameterMappers().get(parameterName);
+				PropertyMapper<Q, F, ?> mapperItem = this.mappersByParamNameMap.get(parameterName);
+				ParameterMapper<Q, F, ?> parameterMapper = mapperItem.getParameterMappers().get(parameterName);
 				//if (mapperItem.isUnfoldEnumerable()) {
 				//if (state.getIsRepeatablePropertyMapper().get(mapperItem)) {
 				if (parameterMapper.isRepeater() || parameterMapper.isUnpackListItems()) {
@@ -477,7 +556,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 //     * @return the assembled query.
 //     */
 //    private static <SQ> String buildQueryString(List<PropertyMapper<SQ, ?>> mappers, String sqlHqlQuery,
-//            Object filter, Set<String> usableParameters) {
+//            F filter, Set<String> usableParameters) {
 //        QueryTemplate qt = new QueryTemplate(sqlHqlQuery);
 //        usableParameters.clear();
 //        usableParameters.addAll(qt.getUsableParameters());
@@ -490,14 +569,14 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      * @return the assembled query.
      */
     @Override
-	public QueryTemplateState<Q> buildQueryState(Object filter) {
+	public QueryTemplateState<Q, F> buildQueryState(F filter) {
     	// TODO: Continuar daqui
-    	QueryTemplateStateInternal<Q> state = new QueryTemplateStateDefault<>(this, null, filter, new LinkedHashMap<>(), new LinkedHashMap<>(), new LinkedHashMap<>());
+    	QueryTemplateStateInternal<Q, F> state = new QueryTemplateStateDefault<Q, F>(this, null, filter, new LinkedHashMap<>(), new LinkedHashMap<>(), new LinkedHashMap<>());
     	
         // Auxiliary variable to access the mapper by property name.
         Map<String, PropertyMapper> mappersByPrp = new LinkedHashMap<>();
         for (String filterPrp : this.mappersByPropertyNameMap.keySet()) {
-			PropertyMapper<Q, ?> mapperItem = this.mappersByPropertyNameMap.get(filterPrp);
+			PropertyMapper<Q, F, ?> mapperItem = this.mappersByPropertyNameMap.get(filterPrp);
             if (mappersByPrp.containsKey(mapperItem.getFilterPrp())) {
                 throw new QueryTemplateException(
                         String.format("Error while adding property '%s'", mapperItem.getFilterPrp()));
@@ -661,20 +740,20 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
         return sb.toString();
     }
 
-    private String unpackArrayParamCriterionIfNecessary(Object filter, List<PropertyMapper<Q, ?>> criterionMappers, String criterion, QueryTemplateState<Q> state) {
+    private String unpackArrayParamCriterionIfNecessary(F filter, List<PropertyMapper<Q, F, ?>> criterionMappers, String criterion, QueryTemplateState<Q, F> state) {
         StringBuilder repeatedCriterion = new StringBuilder();
 
         StringBuilder filterPrpsStr = new StringBuilder();
         String comma = "";
         // Checking the existence of some enumerable.
         Map<PropertyMapper, Object> unpackableValues = new LinkedHashMap<>();
-        for (PropertyMapper<Q, ?> mapper : criterionMappers) {
+        for (PropertyMapper<Q, F, ?> mapper : criterionMappers) {
             Object value = PropertyUtils.getProperty(filter, mapper.getFilterPrp());
 
             // In the case `any` is used one or more properties can be not participating in the query.
             if (mapper.getParticipatesInQuery().isParticipating(filter, mapper.getFilterPrp())) {
             	for (String parameterName : mapper.getParameterMappers().keySet()) {
-					ParameterMapper<Q, ?> parameterMapper = mapper.getParameterMappers().get(parameterName);
+					ParameterMapper<Q, F, ?> parameterMapper = mapper.getParameterMappers().get(parameterName);
 					if (parameterMapper.isUnpackListItems()) {
 						unpackableValues.put(mapper, value);
 					}
@@ -688,7 +767,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
         String currentTargetListItemConnector = "";
         String criterionSub = criterion;
         
-		for (PropertyMapper<Q, ?> mapper : unpackableValues.keySet()) {
+		for (PropertyMapper<Q, F, ?> mapper : unpackableValues.keySet()) {
 			Object value = unpackableValues.get(mapper);
             valueColl = CollectionUtil.toCollection(value);
             if (valueColl == null) {
@@ -696,7 +775,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                         "Some parameter of enumerable type expected. parameter: '" + filterPrpsStr + "'");
             }
 			for (String parameterName : mapper.getParameterMappers().keySet()) {
-				ParameterMapper<Q, ?> parameterMapper = mapper.getParameterMappers().get(parameterName);
+				ParameterMapper<Q, F, ?> parameterMapper = mapper.getParameterMappers().get(parameterName);
 				if (parameterMapper.isUnpackListItems()) {
 					int unpackIndex = 0;
 					StringBuilder unpackedParameterReferences = new StringBuilder();
@@ -720,8 +799,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      *
      * @return the repeated criterion.
      */
-    private String repeatArrayParamCriterion(String filterPrpsStr, Object filter, List<PropertyMapper<Q, ?>> criterionMappers,
-            String repeatConnector, String criterion, QueryTemplateState<Q> state) {
+    private String repeatArrayParamCriterion(String filterPrpsStr, F filter, List<PropertyMapper<Q, F, ?>> criterionMappers,
+            String repeatConnector, String criterion, QueryTemplateState<Q, F> state) {
         StringBuilder repeatedCriterion = new StringBuilder();
 
         String comma = "";
@@ -729,11 +808,11 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
         PropertyMapper firstRepeaterMapper = null;
         Set<PropertyMapper> repeatableMappers = new LinkedHashSet<>();
         // Checking the existence of some enumerable.
-        for (PropertyMapper<Q, ?> mapper : criterionMappers) {
+        for (PropertyMapper<Q, F, ?> mapper : criterionMappers) {
             Object value = PropertyUtils.getProperty(filter, mapper.getFilterPrp());
 
             for (String parameterName : mapper.getParameterMappers().keySet()) {
-            	ParameterMapper<Q, ?> parameterMapper = mapper.getParameterMappers().get(parameterName);
+            	ParameterMapper<Q, F, ?> parameterMapper = mapper.getParameterMappers().get(parameterName);
             	// In the case `any` is used one or more properties can be not participating in the query.
             	if (value != null) {
             		if (parameterMapper.isRepeater()) {
@@ -770,9 +849,9 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
         for (Object valueItem : firstRepeaterValue) {
             repeatedCriterion.append(tempConnector);
             String criterionSub = criterion;
-            for (PropertyMapper<Q, ?> repeatableMapper : repeatableMappers) {
+            for (PropertyMapper<Q, F, ?> repeatableMapper : repeatableMappers) {
             	for (String parameterName : repeatableMapper.getParameterMappers().keySet()) {
-					ParameterMapper<Q, ?> parameterMapper = repeatableMapper.getParameterMappers().get(parameterName);
+					ParameterMapper<Q, F, ?> parameterMapper = repeatableMapper.getParameterMappers().get(parameterName);
 					criterionSub = criterionSub.replace(this.config.getParameterUsagePrefix() + parameterMapper.getParameterName(),
 							this.config.getParameterUsagePrefix() + parameterMapper.getParameterName() + "_" + repeatIndex);
 				}
@@ -787,13 +866,13 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
         return repeatedCriterion.toString();
     }
 
-    private void createEvalRunnerIfNecessary(QueryTemplateStateInternal<Q> state) throws Throwable {
+    private void createEvalRunnerIfNecessary(QueryTemplateStateInternal<Q, F> state) throws Throwable {
     	if (state.getEvalRunner() == null) {
     		EvalRunner evalRunner = this.config.getEvalRunnerCreator().apply(state);
     		Map<String, Boolean> prpParticipations = new LinkedHashMap<>();
     		Map<String, Object> prpValues = new LinkedHashMap<>();
     		for (String filterPrp : this.mappersByPropertyNameMap.keySet()) {
-    			PropertyMapper<Q, ?> mapperItem = this.mappersByPropertyNameMap.get(filterPrp);
+    			PropertyMapper<Q, F, ?> mapperItem = this.mappersByPropertyNameMap.get(filterPrp);
     			Object prpValue = PropertyUtils.getProperty(state.getFilter(), filterPrp);
     			Boolean prpParticipation = mapperItem.getParticipatesInQuery().isParticipating(state.getFilter(), filterPrp);
     			prpParticipations.put(filterPrp, prpParticipation);
@@ -815,8 +894,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      */
     private String buildParameterCriterion(OutputParam<Integer> index, String currentConnector,
     		OutputParam<Boolean> paramParticipates, 
-    		boolean anyParamBefore, Object filter, 
-            QueryTemplateStateInternal<Q> state) {    	
+    		boolean anyParamBefore, F filter, 
+            QueryTemplateStateInternal<Q, F> state) {    	
         StringBuilder queryTextMod = new StringBuilder();
         boolean repeatTokenActive = false;
         String repeatConnector = "  ";
@@ -864,7 +943,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                     repeatTokenActive = true;
                 } else if (type == QueryTemplateTokenPojo.TokenType.CRITERION
                         || type == QueryTemplateTokenPojo.TokenType.QUERY_HELPER) {
-                	List<PropertyMapper<Q, ?>> criterionMappers = new ArrayList<>();
+                	List<PropertyMapper<Q, F, ?>> criterionMappers = new ArrayList<>();
                     boolean cumulativePrpsParticipates = false;
                     if (evalPrps != null) {
                     	try {
@@ -904,7 +983,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                     		}
                     		
                     		// Whether the property is participating in the query.
-                    		PropertyMapper<Q, ?> mapper = null;
+                    		PropertyMapper<Q, F, ?> mapper = null;
                     		if (this.mappersByPropertyNameMap.containsKey(filterPrpTrim)) {
                     			mapper = this.mappersByPropertyNameMap.get(filterPrpTrim);
                     		}
@@ -935,7 +1014,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                     if (cumulativePrpsParticipates) {
                         if (type == QueryTemplateTokenPojo.TokenType.CRITERION) {
                         	// #region criterionMappersByParameterUsage
-                        	Set<ParameterMapper<Q, ?>> criterionParametersUsagedSet = new LinkedHashSet<>();
+                        	Set<ParameterMapper<Q, F, ?>> criterionParametersUsagedSet = new LinkedHashSet<>();
                 			String parameterUsagePatternStr = this.config.getParameterUsagePrefix() + this.config.getParameterNamePattern();
                 			Pattern parameterUsagePattern = Pattern.compile(parameterUsagePatternStr);
                 			Matcher matcher = parameterUsagePattern.matcher(this.queryTextTokens.get(index.getValue()).getValue());
@@ -946,16 +1025,16 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                 				}
                 				matcherIndex = matcher.end();
                 				String parameterName = matcher.group(1);
-                				PropertyMapper<Q, ?> mapperItem = this.mappersByParamNameMap.get(parameterName);
+                				PropertyMapper<Q, F, ?> mapperItem = this.mappersByParamNameMap.get(parameterName);
                 				if (mapperItem != null) {
-                					ParameterMapper<Q, ?> parameterMapper = mapperItem.getParameterMappers().get(parameterName);
+                					ParameterMapper<Q, F, ?> parameterMapper = mapperItem.getParameterMappers().get(parameterName);
                 					criterionParametersUsagedSet.add(parameterMapper);
                 				}
                 			}
                         	// #endregion
                         	if (evalPrps != null) {
                         		criterionMappers.clear();
-                        		for (ParameterMapper<Q, ?> parameterMapper : criterionParametersUsagedSet) {
+                        		for (ParameterMapper<Q, F, ?> parameterMapper : criterionParametersUsagedSet) {
 									criterionMappers.add(parameterMapper.getOwner());
 								}
                         	}
@@ -963,7 +1042,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                                 criterionPrp = this.repeatArrayParamCriterion(filterPrpsStr, filter, criterionMappers,
                                         repeatConnector, this.queryTextTokens.get(index.getValue()).getValue(), state);
                             } else {          
-                            	for (ParameterMapper<Q, ?> parameterMapper : criterionParametersUsagedSet) {
+                            	for (ParameterMapper<Q, F, ?> parameterMapper : criterionParametersUsagedSet) {
                             		if (parameterMapper.isRepeater() && parameterMapper.getOwner().getParticipatesInQuery().isParticipating(filter, parameterMapper.getOwner().getFilterPrp())) {
                             			throw new QueryTemplateException("The parameter '" + parameterMapper.getParameterName()
                             					+ "' is participating in the query, and is repeater, so it must be used with the "
@@ -1023,8 +1102,8 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      * parentheses are not included either.
      */
     private String buildParenthesisCriterion(OutputParam<Integer> index, String currentConnector,
-            OutputParam<Boolean> anyParamParenthesis, Object filter, 
-            QueryTemplateStateInternal<Q> state) {
+            OutputParam<Boolean> anyParamParenthesis, F filter, 
+            QueryTemplateStateInternal<Q, F> state) {
         StringBuilder queryTextMod = new StringBuilder();
         anyParamParenthesis.setValue(false);
         String innerParenthesisConnector = "  ";
@@ -1085,13 +1164,13 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
         return queryTextMod.toString();
     }
 
-    private String buildQueryHelper(Object filter, QueryTemplateTokenPojo queryHelperTokenTo) {
+    private String buildQueryHelper(F filter, QueryTemplateTokenPojo queryHelperTokenTo) {
         String queryTextHelper;
 
         String queryHelperKey = queryHelperTokenTo.getValue().split(":")[1].trim();
         if (this.queryHelpers.containsKey(queryHelperKey)) {
-            QueryTemplate<Q> queryHelper = this.queryHelpers.get(queryHelperKey);
-            QueryTemplateState<Q> helperState = queryHelper.buildQueryState(filter);
+            QueryTemplate<Q, F> queryHelper = this.queryHelpers.get(queryHelperKey);
+            QueryTemplateState<Q, F> helperState = queryHelper.buildQueryState(filter);
             queryTextHelper = " " + helperState.getQueryString() + " ";
         } else {
             throw new QueryTemplateException(
@@ -1106,7 +1185,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      * in the array with the delimiters removed.
      */
     private List<QueryTemplateTokenPojo> buildTokens(String queryText, int length, Pattern pt,
-            Set<PropertyMapper<Q, ?>> usableMappers) {
+            Set<PropertyMapper<Q, F, ?>> usableMappers) {
         Matcher mt = pt.matcher(queryText);
 
         List<QueryTemplateTokenPojo> tokens = new ArrayList<>(length);
@@ -1152,7 +1231,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
                 		cleanProperty = rxReservedAnyReplacer.matcher(cleanProperty).replaceAll("");
                 		cleanProperty = cleanProperty.trim();
                 		
-                		PropertyMapper<Q, ?> mapper = this.mappersByPropertyNameMap.get(cleanProperty);
+                		PropertyMapper<Q, F, ?> mapper = this.mappersByPropertyNameMap.get(cleanProperty);
                 		if (mapper == null) {
                 			throw new QueryTemplateException("Unmapped property listed: " + cleanProperty);
                 		}
@@ -1180,7 +1259,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
 			}
 			matcherIndex = matcher.end();
 			String parameterUsage = matcher.group(1);
-			PropertyMapper<Q, ?> mapper = this.mappersByParamNameMap.get(parameterUsage);
+			PropertyMapper<Q, F, ?> mapper = this.mappersByParamNameMap.get(parameterUsage);
 			
 			usableMappers.add(mapper);
 		}
@@ -1196,7 +1275,7 @@ public class QueryTemplateDefault<Q> implements QueryTemplateInternal<Q> {
      * @return the usable parameters.
      */
     @Override
-	public Set<PropertyMapper<Q, ?>> getUsableMappers() {
+	public Set<PropertyMapper<Q, F, ?>> getUsableMappers() {
         return this.usableMappers;
     }
 

@@ -4,13 +4,15 @@ package io.github.querytemplate;
  * Mapper used to relate:<br>
  * FilterProperty X ParameterName X EntityProperty X ParticipatesInQuery X CriteriaHandler.
  */
-public class ParameterMapper<Q, P> {
+class ParameterMapper<Q, F, P> {
 
-	private PropertyMapper<Q, P> owner;
+	private PropertyMapper<Q, F, P> owner;
 	
     private String parameterName;
     private boolean unpackListItems = false;
     private boolean isRepeater = false;
+    private AssignNamedParameter<Q, P> onParticipatesNamed = null;
+    private AssignPositionalParameter<Q, P> onParticipatesPositional = null;
 
 //	public static <SQ, SP> PropertyMapper<SQ, SP> of(String filterPrp, Class<SP> propertyClass) {
 //		return new PropertyMapper<SQ, SP>(filterPrp);
@@ -21,7 +23,7 @@ public class ParameterMapper<Q, P> {
      *
      * @param filterPrp    the property name in the filter.
      */
-    ParameterMapper(PropertyMapper<Q, P> owner) {
+    ParameterMapper(PropertyMapper<Q, F, P> owner) {
         this.owner = owner;
     }
     
@@ -29,7 +31,7 @@ public class ParameterMapper<Q, P> {
 		return parameterName;
 	}
 	
-	public ParameterMapper<Q, P> parameterName(String parameterName) {
+	public ParameterMapper<Q, F, P> parameterName(String parameterName) {
 		this.parameterName = parameterName;
 		return this;
 	}
@@ -38,8 +40,16 @@ public class ParameterMapper<Q, P> {
 		return unpackListItems;
 	}
 	
-	public PropertyMapper<Q, P> getOwner() {
+	public PropertyMapper<Q, F, P> getOwner() {
 		return owner;
+	}
+
+	public AssignNamedParameter<Q, P> getOnParticipatesNamed() {
+		return onParticipatesNamed;
+	}
+
+	public AssignPositionalParameter<Q, P> getOnParticipatesPositional() {
+		return onParticipatesPositional;
 	}
 
 	/**
@@ -55,7 +65,7 @@ public class ParameterMapper<Q, P> {
 	 * @param unpackListItems the unpackListItems to set
 	 * @return this PropertyMapper instance for method chaining.
 	 */
-	public ParameterMapper<Q, P> unpackListItems(boolean unpackListItems) {
+	public ParameterMapper<Q, F, P> unpackListItems(boolean unpackListItems) {
 		if (unpackListItems) {
 			//this.parameterAsList(false); // If unpacking, we don't want to treat it as a list parameter
 			this.repeater(false); // If unpacking, we don't want to treat it as a repeater
@@ -76,12 +86,22 @@ public class ParameterMapper<Q, P> {
 	 * @param isRepeater The value indicating whether the property is a repeater or not.
 	 * @return This PropertyMapper instance for method chaining.
 	 */
-	public ParameterMapper<Q, P> repeater(boolean isRepeater) {
+	public ParameterMapper<Q, F, P> repeater(boolean isRepeater) {
 		if (isRepeater) {
 			//this.parameterAsList(false); // If unpacking, we don't want to treat it as a list parameter
 			this.unpackListItems(false); // If unpacking, we don't want to treat it as a repeater
 		}
 		this.isRepeater = isRepeater;
+		return this;
+	}
+	
+	public ParameterMapper<Q, F, P> onParticipatesNamed(AssignNamedParameter<Q, P> onParticipatesNamed) {
+		this.onParticipatesNamed = onParticipatesNamed;
+		return this;
+	}
+	
+	public ParameterMapper<Q, F, P> onParticipatesPositional(AssignPositionalParameter<Q, P> onParticipatesPositional) {
+		this.onParticipatesPositional = onParticipatesPositional;
 		return this;
 	}
 }

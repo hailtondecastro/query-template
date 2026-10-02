@@ -35,7 +35,7 @@ mvn clean verify
 <dependency>
     <groupId>io.github.hailtondecastro</groupId>
     <artifactId>query-template</artifactId>
-    <version>0.1.3</version>
+    <version>0.1.5</version>
 </dependency>
 ```
 
@@ -45,7 +45,7 @@ mvn clean verify
 
 | Type                                                                                | Role                                                                                                                                                                                                                    |
 |-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `QueryTemplateConfig`                                                               | Fluent, interface-based configuration: query text, property mappers, tokens, named/positional mode, query helpers. Created with `QueryTemplateConfig.of(queryText, queryClass)`. `Q` is your target query type.         |
+| `QueryTemplateConfig`                                                               | Fluent, interface-based configuration: query text, property mappers, tokens, named/positional mode, query helpers. Created with `QueryTemplateConfig.of(queryText, queryClass, filterClass)`. `Q` is your target query type; `F` is your filter type.         |
 | `QueryTemplate`                                                                     | Immutable engine built from a config via `QueryTemplate.of(config)`. Produces a state and binds parameters.                                                                                                             |
 | `QueryTemplateState`                                                                | Result of `buildQueryState(filter)`: exposes the final `getQueryString()` and the property/parameter bookkeeping.                                                                                                       |
 | `PropertyMapperConfig` (via `addMapper` / `modifyMapper`)                           | Maps a filter property to a `ParticipatesInQuery` and named/positional binding callbacks; configures one or more parameter mappers.                                                                                   |
@@ -97,8 +97,11 @@ String sql =
     "    [minAge][and][ e.age >= :minAge] \n" +
     "    [extra][ e.active = 'Y']";
 
-QueryTemplateConfig<Query<Employee>> config =
-    QueryTemplateConfig.of(sql, new SimpleTypeToken<Query<Employee>>(){}.getRawType());
+QueryTemplateConfig<Query<Employee>, EmployeeFilter> config =
+    QueryTemplateConfig.of(
+            sql,
+            new SimpleTypeToken<Query<Employee>>(){}.getRawType(), 
+            EmployeeFilter.class);
 
 config
     .addMapper("name", String.class)
@@ -110,13 +113,13 @@ config
         .onParticipatesNamed((Query<Employee> q, String p, Integer v, AssignedParameterInfo<Integer> info) -> q.setParameter(p, v))
         .done();
 
-QueryTemplate<Query<Employee>> template = QueryTemplate.of(config);
+QueryTemplate<Query<Employee>, EmployeeFilter> template = QueryTemplate.of(config);
 
 EmployeeFilter filter = new EmployeeFilter();
 filter.setName("john");   // participating in the query
 filter.setMinAge(null);   // not participating in the query
 
-QueryTemplateState<Query<Employee>> state = template.buildQueryState(filter);
+QueryTemplateState<Query<Employee>, EmployeeFilter> state = template.buildQueryState(filter);
 String finalSql = state.getQueryString();
 // -> select e.* from EMPLOYEE e  where  e.name = :name  and  e.active = 'Y'
 
@@ -129,8 +132,11 @@ template.setParamQuery(state, query); // binds only the used & participating in 
 ### 2. Positional parameters (`?`)
 
 ```java
-QueryTemplateConfig<Query<Employee>> config =
-    QueryTemplateConfig.of(sql, new SimpleTypeToken<Query<Employee>>(){}.getRawType())
+QueryTemplateConfig<Query<Employee>, EmployeeFilter> config =
+    QueryTemplateConfig.of(
+            sql,
+            new SimpleTypeToken<Query<Employee>>(){}.getRawType(), 
+            EmployeeFilter.class)
         .convertNamedToPositionalParameters(true);
 
 config.addMapper("name", String.class)
@@ -185,12 +191,14 @@ config.addMapper("codes", Object.class)
 ```java
 String helper = "select id from EMPLOYEE e [filters] [where] [name][ e.name = :name]";
 
-QueryTemplateConfig<Query<Employee>> config =
-    QueryTemplateConfig.of("select * from ( [Q:empHelper] ) x",
-        new SimpleTypeToken<Query<Employee>>(){}.getRawType());
+QueryTemplateConfig<Query<Employee>, EmployeeFilter> config =
+    QueryTemplateConfig.of(
+            "select * from ( [Q:empHelper] ) x",
+            new SimpleTypeToken<Query<Employee>>(){}.getRawType(),
+            EmployeeFilter.class);
 config.addQueryHelper("empHelper", helper);
 // configure the mappers (name, ...) then:
-QueryTemplate<Query<Employee>> template = QueryTemplate.of(config);
+QueryTemplate<Query<Employee>, EmployeeFilter> template = QueryTemplate.of(config);
 ```
 
 ### 6. `$any$` and negation (DSL)
@@ -211,7 +219,7 @@ The runner is created from the current `QueryTemplateState` and receives these b
 The engine/adapter determines how to access map entries. For example, JavaScript-like engines may support `pp.jobTitle`; plain BeanShell uses `pp{"jobTitle"}` unless adapted. Only mapped filter properties are included in these maps. Configure the runner with `evalRunnerCreator(...)` and supply the engine dependency yourself. Treat templates/expressions as trusted code; do not evaluate untrusted scripts.
 
 #### `JSR233EvalRunnerCreator`
-Reusable `Function<QueryTemplateState<?>, EvalRunner>` that creates `JSR233EvalRunner` instances. It is not a singleton enforced by the class; reuse one creator when compiled-script caching is desired.
+Reusable `Function<QueryTemplateState<?, ?>, EvalRunner>` that creates `JSR233EvalRunner` instances. It is not a singleton enforced by the class; reuse one creator when compiled-script caching is desired.
 This allows you to create an `EvalRunner` that can evaluate scripts using the JSR-233 scripting API, providing a flexible way to include dynamic conditions in your query templates.
 
 #### Example with a JSR-223 Groovy engine
@@ -238,7 +246,7 @@ The JSR-223 API is part of Java 11+, but a JavaScript engine is not guaranteed t
 ```
 ```java
 String query = 
-           "select free.att1 as empl.id, free.att2 as empl.name, free.att3 as empl.department, 'I' as empl.category \n" +
+           "select free.id, free.name, free.department, 'I' as empl.category \n" +
             "   from FREELANCERTB free  \n" +
             "   [filters]  \n" +
             "   [where]  \n" +
@@ -290,7 +298,7 @@ config
             interpreter = new Interpreter();
         }
         @Override
-        public <Q> Object binding(QueryTemplateState<Q> preliminarState,
+        public Object binding(QueryTemplateState<?, ?> preliminaryState,
             String name,
             Object value) throws Throwable {
             interpreter.set(name, value);
@@ -298,12 +306,12 @@ config
         }
 
         @Override
-        public <Q> void clearBindings(QueryTemplateState<Q> preliminarState) throws Throwable {
+        public void clearBindings(QueryTemplateState<?, ?> preliminaryState) throws Throwable {
             interpreter.getNameSpace().clear();
         }
 
         @Override
-        public <Q> Object eval(QueryTemplateState<Q> preliminarState,
+        public Object eval(QueryTemplateState<?, ?> preliminaryState,
             String script) throws Throwable {
             return interpreter.eval(script);
         }
@@ -311,7 +319,7 @@ config
 ```
 ```java
 String query = 
-           "select free.att1 as empl.id, free.att2 as empl.name, free.att3 as empl.department, 'I' as empl.category \n" +
+           "select free.id, free.name, free.department as empl.department, 'I' as empl.category \n" +
             "   from FREELANCERTB free  \n" +
             "   [filters]  \n" +
             "   [where]  \n" +
@@ -342,7 +350,7 @@ config
             interpreter = new Interpreter();
         }
         @Override
-        public <Q> Object binding(QueryTemplateState<Q> preliminarState,
+        public Object binding(QueryTemplateState<?, ?> preliminaryState,
             String name,
             Object value) throws Throwable {
             if (value instanceof Map<?, ?>) {
@@ -360,7 +368,7 @@ config
 ```
 ```java
 String query = 
-           "select free.att1 as empl.id, free.att2 as empl.name, free.att3 as empl.department, 'I' as empl.category \n" +
+           "select free.id, free.name, free.department, 'I' as empl.category \n" +
             "   from FREELANCERTB free  \n" +
             "   [filters]  \n" +
             "   [where]  \n" +
@@ -431,6 +439,15 @@ config
 Assume `EmployeeFilter` has `getDepartmentId()` and `getFormalNamesArr()` properties, and each `FormalName` has `getFirstName()` and `getLastName()`. The outer parentheses are included only when `formalNamesArr` is non-empty; `[repeat]` creates one inner group for each item.
 
 ```java
+import java.util.Arrays;
+import java.util.Collection;
+
+import org.hibernate.query.Query;
+import org.hibernate.type.StandardBasicTypes;
+
+import io.github.querytemplate.*;
+import io.github.querytemplate.proxy.*;
+
 String queryText =
     "select e.id, e.first_name, e.department_id \n" +
     "from EMPLOYEESTB e \n" +
@@ -441,8 +458,11 @@ String queryText =
     "    [formalNamesArr][repeat][or][(e.first_name like :firstNameArr and e.last_name like :lastNameArr)] \n" +
     "  [)]";
 
-QueryTemplateConfig<Query<Employee>> config =
-    QueryTemplateConfig.of(queryText, new SimpleTypeToken<Query<Employee>>(){}.getRawType());
+QueryTemplateConfig<Query<Employee>, EmployeeFilter> config =
+    QueryTemplateConfig.of(
+            queryText,
+            new SimpleTypeToken<Query<Employee>>(){}.getRawType(),
+            EmployeeFilter.class);
 
 config
     .addMapper("departmentId", Integer.class)
@@ -456,15 +476,15 @@ config
         .addParameter("lastNameArr").repeater(true).done()
         .onParticipatesNamed((Query<Employee> q, String name, FormalName value,
                 AssignedParameterInfo<FormalName> info) -> {
-            if (name.startsWith("firstNameArr")) {
+            if (info.getName().equals("firstNameArr")) {
                 q.setParameter(name, value.getFirstName());
-            } else if (name.startsWith("lastNameArr")) {
+            } else if (info.getName().equals("lastNameArr")) {
                 q.setParameter(name, value.getLastName());
             }
         })
         .done();
 
-QueryTemplate<Query<Employee>> template = QueryTemplate.of(config);
+QueryTemplate<Query<Employee>, EmployeeFilter> template = QueryTemplate.of(config);
 EmployeeFilter filter = new EmployeeFilter();
 filter.setDepartmentId(42);
 filter.setFormalNamesArr(new FormalName[] {
@@ -483,7 +503,126 @@ rendered = template.buildQueryState(filter).getQueryString();
 // The entire AND group, including its parentheses, is omitted.
 ```
 
-> Property names use Java **camelCase** (`filterPrp1`), which resolves to the getter `getFilterPrp1()` via `PropertyUtils`.
+### 10. Lambda-based configuration and multiple parameter mappers for a single property
+
+Lambda-based mapper methods resolve a filter property from a getter instead of a property-name string. They require a `ProxyFactoryCreator` implementation configured on the template config; the implementation is supplied by the application (for example, using a proxy library). This example mirrors `QueryTemplateTest.onParticipatePerParameter()`: `names` is used as both a packed list parameter (`name_a`) and a repeated item parameter (`name_b`).
+
+The Javassist implementation shown below requires this dependency in the application:
+
+```xml
+<dependency>
+    <groupId>org.javassist</groupId>
+    <artifactId>javassist</artifactId>
+    <version>3.24.0-GA</version>
+</dependency>
+```
+
+```java
+import java.util.Arrays;
+import java.util.Collection;
+
+import org.hibernate.query.Query;
+import org.hibernate.type.StandardBasicTypes;
+
+import io.github.querytemplate.*;
+import io.github.querytemplate.proxy.*;
+
+String queryText =
+    "select outs.id, outs.name, outs.department, 'O' as category \n" +
+    "from OUTSOURCEDTB outs \n" +
+    "[filters] \n" +
+    "[where] \n" +
+    "  [names][outs.name in (:name_a)] \n" +
+    "union \n" +
+    "select free.id, free.name, free.department, 'F' as category \n" +
+    "from FREELANCERTB free \n" +
+    "[filters] \n" +
+    "[where] \n" +
+    "  [(] \n" +
+    "    [names][repeat][or][free.name like :name_b] \n" +
+    "  [)]";
+
+QueryTemplateConfig<Query<Employee>, EmployeeFilter> config =
+    QueryTemplateConfig.of(
+        queryText,
+        new SimpleTypeToken<Query<Employee>>() {}.getRawType(),
+        EmployeeFilter.class);
+
+// proxyFactoryCreator is an application-provided implementation backed by a proxy library.
+config
+    .proxyFactoryCreator(proxyFactoryCreator)
+    .addMapperC(filter -> filter.getNames())
+        .participatesInQuery(ParticipantCheckers.COLLECTION_NOTEMPTY)
+        .switchType()
+        .addParameter("name_b")
+            .repeater(true)
+            .onParticipatesNamed((Query<Employee> q, String name, String item,
+                    AssignedParameterInfo<String> info) ->
+                q.setParameter(name, "%" + item + "%", StandardBasicTypes.STRING))
+            .done()
+        .switchType() //this is necessary because we are changing the 
+                        //  type of the mapper from `String` to `Collection<String>`. 
+                        //  Without this, the next `addParameter().onParticipatesNamed()` 
+                        //  raise compilation error: 
+                        //  `The method setParameterList(String, Collection) in the type Query<MyEntity> is not applicable for the arguments (String, String)`
+        .addParameter("name_a")
+            .unpackListItems(false)
+            .onParticipatesNamed((Query<Employee> q, String name, Collection<String> values,
+                    AssignedParameterInfo<Collection<String>> info) ->
+                q.setParameterList(name, values))
+            .done()
+        .done();
+
+QueryTemplate<Query<Employee>, EmployeeFilter> template = QueryTemplate.of(config);
+EmployeeFilter filter = new EmployeeFilter();
+filter.setNames(Arrays.asList("John", "Jane"));
+
+QueryTemplateState<Query<Employee>, EmployeeFilter> state = template.buildQueryState(filter);
+String finalSql = state.getQueryString();
+// First select: outs.name in (:name_a)
+// Second select: (free.name like :name_b_0 or free.name like :name_b_1)
+
+
+Query<Employee> query = session.createNativeQuery(finalSql, Employee.class);
+
+template.setParamQuery(state, query);
+// Binds name_a once as a collection, and name_b_0/_1 once per item.
+
+//Example of proxyFactoryCreator implementation using javassist:
+private ProxyFactoryCreator proxyFactoryCreator = (config, clazz) -> {
+    return new ProxyFactory() {
+        javassist.util.proxy.ProxyFactory javassistProxyFactory = new javassist.util.proxy.ProxyFactory();
+        @Override
+        public void setSuperclass(Class clazz) {
+            this.javassistProxyFactory.setSuperclass(clazz);
+        }
+        @Override
+        public void setInterfaces(Class[] ifs) {
+            this.javassistProxyFactory.setInterfaces(ifs);
+        }
+        @Override
+        public Object create(Class[] paramTypes,
+            Object[] args,
+            MethodHandler mh) throws Throwable {
+            javassist.util.proxy.MethodHandler javassistMethodHandler = 
+                    (self, thisMethod, proceed, methodArgs) -> {
+                        return mh.invoke(
+                                self, 
+                                thisMethod, 
+                                proceed,
+                                methodArgs);
+                    };
+            return this.javassistProxyFactory.create(paramTypes, args, javassistMethodHandler);
+        }
+        @Override
+        public void setFilter(MethodFilter mf) {
+            this.javassistProxyFactory.setFilter((method) -> mf.isHandled(method));
+        }
+    };
+};
+```
+
+`addMapperC(filter -> filter.getNames())` infers that the selected property is a collection. `switchType()` changes the fluent API's generic view from the collection type to its item type for the repeated parameter, then back to the collection type for the packed parameter. This is a compile-time typing aid; it does not change the filter property's runtime value.
 
 ---
 

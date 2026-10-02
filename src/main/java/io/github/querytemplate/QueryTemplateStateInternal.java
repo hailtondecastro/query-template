@@ -3,21 +3,21 @@ package io.github.querytemplate;
 import java.util.List;
 import java.util.Map;
 
-public interface QueryTemplateStateInternal<Q> extends QueryTemplateState<Q> {
+public interface QueryTemplateStateInternal<Q, F> extends QueryTemplateState<Q, F> {
 
 	void setPropertyMapperToAssignedParameterInfo(
-		Map<PropertyMapper<Q, ?>, List<AssignedParameterInfo<?>>> propertyMapperToAssignedParameterInfo);
+		Map<PropertyMapper<Q, F, ?>, List<AssignedParameterInfo<?>>> propertyMapperToAssignedParameterInfo);
 
-	Map<PropertyMapper<Q, ?>, Map<Integer, List<AssignedParameterInfo<?>>>> getPropertyMapperItemIndexToAssignedParameterInfo();
+	Map<PropertyMapper<Q, F, ?>, Map<Integer, List<AssignedParameterInfo<?>>>> getPropertyMapperItemIndexToAssignedParameterInfo();
 
 	void setPropertyMapperItemIndexToAssignedParameterInfo(
-		Map<PropertyMapper<Q, ?>, Map<Integer, List<AssignedParameterInfo<?>>>> propertyMapperItemIndexToAssignedParameterInfo);
+		Map<PropertyMapper<Q, F, ?>, Map<Integer, List<AssignedParameterInfo<?>>>> propertyMapperItemIndexToAssignedParameterInfo);
 
-	void setTemplateOwner(QueryTemplate<Q> templateOwner);
+	void setTemplateOwner(QueryTemplate<Q, F> templateOwner);
 
 	void setQueryString(String queryString);
 
-	void setFilter(Object filter);
+	void setFilter(F filter);
 
 	void makeUnmodifiable();
 	

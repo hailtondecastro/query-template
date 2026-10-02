@@ -6,7 +6,7 @@ import java.util.Map;
  * Mapper used to relate:<br>
  * FilterProperty X ParameterName X EntityProperty X ParticipatesInQuery X CriteriaHandler.
  */
-public class PropertyMapper<Q, P> {
+class PropertyMapper<Q, F, P> {
 
     private String filterPrp;
     //private String parameterName;
@@ -19,21 +19,21 @@ public class PropertyMapper<Q, P> {
     //private boolean parameterAsList = false;
 //    private boolean unpackListItems = false;
 //    private boolean isRepeater = false;
-    private Map<String, ParameterMapper<Q, P>> parameterMappers;    
+    private Map<String, ParameterMapper<Q, F, P>> parameterMappers;    
     
-	public ParameterMapper<Q, P> addParameter(String parameterName) {
-		ParameterMapper<Q, P> parameterMapper = new ParameterMapper<Q, P>(this)
+	public ParameterMapper<Q, F, P> addParameter(String parameterName) {
+		ParameterMapper<Q, F, P> parameterMapper = new ParameterMapper<Q, F, P>(this)
 				.parameterName(parameterName);
 		this.parameterMappers.put(parameterName, parameterMapper);
 		return parameterMapper;
 	}
 	
-	public PropertyMapper<Q, P> removeParameter(String filterPrp) {
+	public PropertyMapper<Q, F, P> removeParameter(String filterPrp) {
 		this.parameterMappers.remove(filterPrp);
 		return this;
 	}
 	
-//	public ParameterMapper<Q, P> modifyParameter(String parameterName) {
+//	public ParameterMapper<Q, F, P> modifyParameter(String parameterName) {
 //        return this.parameterMappers.get(parameterName);
 //	}
     
@@ -41,7 +41,7 @@ public class PropertyMapper<Q, P> {
 //		return new PropertyMapper<SQ, SP>(filterPrp);
 //	}
     
-    public Map<String, ParameterMapper<Q, P>> getParameterMappers() {
+    public Map<String, ParameterMapper<Q, F, P>> getParameterMappers() {
 		return parameterMappers;
 	}
 
@@ -62,7 +62,7 @@ public class PropertyMapper<Q, P> {
         return filterPrp;
     }
 
-    public PropertyMapper<Q, P>  filterPrp(String filterPrp) {
+    public PropertyMapper<Q, F, P>  filterPrp(String filterPrp) {
         this.filterPrp = filterPrp;
         return this;
     }
@@ -71,7 +71,7 @@ public class PropertyMapper<Q, P> {
 //		return parameterName;
 //	}
 	
-//	public PropertyMapper<Q, P> parameterName(String parameterName) {
+//	public PropertyMapper<Q, F, P> parameterName(String parameterName) {
 //		this.parameterName = parameterName;
 //		return this;
 //	}
@@ -99,7 +99,7 @@ public class PropertyMapper<Q, P> {
      * @param participatesInQuery the ParticipatesInQuery instance
      * @return this PropertyMapper instance for method chaining.
      */
-    public PropertyMapper<Q, P> participatesInQuery(ParticipatesInQuery participatesInQuery) {
+    public PropertyMapper<Q, F, P> participatesInQuery(ParticipatesInQuery participatesInQuery) {
         this.participatesInQuery = participatesInQuery;
         return this;
     }
@@ -120,7 +120,7 @@ public class PropertyMapper<Q, P> {
 //	 * @param parameterAsList the parameterAsList to set
 //	 * @return this PropertyMapper instance for method chaining.
 //	 */
-//    public PropertyMapper<Q, P> parameterAsList(boolean parameterAsList) {
+//    public PropertyMapper<Q, F, P> parameterAsList(boolean parameterAsList) {
 //    	if (parameterAsList) {
 //    		this.unpackListItems(false); // If treating as list, we don't want to unpack the items
 //    		this.repeater(false); // If treating as list, we don't want to treat it as a repeater
@@ -143,7 +143,7 @@ public class PropertyMapper<Q, P> {
 	 * @param onParticipatesNamed the AssignNamedParameter instance
 	 * @return this PropertyMapper instance for method chaining.
 	 */
-	public PropertyMapper<Q, P> onParticipatesNamed(AssignNamedParameter<Q, P> onParticipatesNamed) {
+	public PropertyMapper<Q, F, P> onParticipatesNamed(AssignNamedParameter<Q, P> onParticipatesNamed) {
 		this.onParticipatesNamed = onParticipatesNamed;
 		return this;
 	}
@@ -163,7 +163,7 @@ public class PropertyMapper<Q, P> {
 	 * @param onParticipatesPositional the AssignPositionalParameter instance
 	 * @return this PropertyMapper instance for method chaining.
 	 */
-	public PropertyMapper<Q, P> onParticipatesPositional(AssignPositionalParameter<Q, P> onParticipatesPositional) {
+	public PropertyMapper<Q, F, P> onParticipatesPositional(AssignPositionalParameter<Q, P> onParticipatesPositional) {
 		this.onParticipatesPositional = onParticipatesPositional;
 		return this;
 	}
@@ -185,7 +185,7 @@ public class PropertyMapper<Q, P> {
 //	 * @param unpackListItems the unpackListItems to set
 //	 * @return this PropertyMapper instance for method chaining.
 //	 */
-//	public PropertyMapper<Q, P> unpackListItems(boolean unpackListItems) {
+//	public PropertyMapper<Q, F, P> unpackListItems(boolean unpackListItems) {
 //		if (unpackListItems) {
 //			//this.parameterAsList(false); // If unpacking, we don't want to treat it as a list parameter
 //			this.repeater(false); // If unpacking, we don't want to treat it as a repeater
@@ -206,7 +206,7 @@ public class PropertyMapper<Q, P> {
 //	 * @param isRepeater The value indicating whether the property is a repeater or not.
 //	 * @return This PropertyMapper instance for method chaining.
 //	 */
-//	public PropertyMapper<Q, P> repeater(boolean isRepeater) {
+//	public PropertyMapper<Q, F, P> repeater(boolean isRepeater) {
 //		if (isRepeater) {
 //			//this.parameterAsList(false); // If unpacking, we don't want to treat it as a list parameter
 //			this.unpackListItems(false); // If unpacking, we don't want to treat it as a repeater

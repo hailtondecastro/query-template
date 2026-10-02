@@ -99,8 +99,9 @@ import java.util.Set;
  * can be included in the preceding the [query_helper] content ('and', 'or' or 'no operator').<br>
  * 
  * @param <Q> the type of the query. It is platform-specific (e.g., String for SQL, CriteriaQuery for JPA, etc.). It is not used internally, it is only for strong typing and IDE code completion.
+ * @param <F> the type of the filter. It is used internally to create proxy objects and resolve properties by lambda expressions, used too for strong typing and IDE code completion.
  */
-public interface QueryTemplate<Q> {
+public interface QueryTemplate<Q, F> {
 	void setUp();
 
 	/**
@@ -109,7 +110,7 @@ public interface QueryTemplate<Q> {
 	 * @param state the state of the query template.
 	 * @param query        the query to set the parameters on.
 	 */
-	void setParamQuery(QueryTemplateState<Q> state,
+	void setParamQuery(QueryTemplateState<Q, F> state,
 		Q query);
 
 	/**
@@ -118,15 +119,16 @@ public interface QueryTemplate<Q> {
 	 * @param filter the filter object.
 	 * @return the assembled query.
 	 */
-	QueryTemplateState<Q> buildQueryState(Object filter);
+	QueryTemplateState<Q, F> buildQueryState(F filter);
 
 	/**
 	 * Create a QueryTemplate instance with the given configuration.
 	 * @param <SQ> the type of the query. It is platform-specific (e.g., String for SQL, CriteriaQuery for JPA, etc.). It is not used internally, it is only for strong typing and IDE code completion.
+	 * @param <SF> the type of the filter. It is used internally to create proxy objects and resolve properties by lambda expressions, used too for strong typing and IDE code completion.
 	 * @param config the configuration for the QueryTemplate.
 	 * @return QueryTemplate instance with the given configuration.
 	 */
-	public static <SQ> QueryTemplate<SQ> of(QueryTemplateConfig<SQ> config) {
+	public static <SQ, SF> QueryTemplate<SQ, SF> of(QueryTemplateConfig<SQ, SF> config) {
 		return new QueryTemplateDefault<>(config);
 	}
 }

@@ -4,16 +4,16 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
-class PropertyMapperConfigDefault<Q, P> implements PropertyMapperConfigInternal<Q, P> {
-	QueryTemplateConfig<Q> queryTemplateConfig;
+class PropertyMapperConfigDefault<Q, F, P, I> implements PropertyMapperConfigInternal<Q, F, P, I>, PropertyMapperConfig<Q, F, P, I> {
+	QueryTemplateConfig<Q, F> queryTemplateConfig;
 	
-	PropertyMapperConfigDefault(QueryTemplateConfig<Q> queryTemplateConfig) {
+	PropertyMapperConfigDefault(QueryTemplateConfig<Q, F> queryTemplateConfig) {
 		this.parameterMappers = new LinkedHashMap<>();
 		this.queryTemplateConfig = queryTemplateConfig;
 	}
 	
 	@Override
-	public QueryTemplateConfig<Q> done() {
+	public QueryTemplateConfig<Q, F> done() {
 		if (this.parameterMappers.isEmpty()) {
 			this.addParameter().done();
 		}
@@ -32,53 +32,53 @@ class PropertyMapperConfigDefault<Q, P> implements PropertyMapperConfigInternal<
 //    private boolean unpackListItems = false;
 //    private boolean repeater = false;
     
-    private Map<String, ParameterMapperConfig<Q, P>> parameterMappers;
+    private Map<String, ParameterMapperConfig<Q, F, P, I>> parameterMappers;
     
 	@Override
-	public PropertyMapperConfig<Q, P> filterPrp(String filterPrp) {
+	public PropertyMapperConfig<Q, F, P, I> filterPrp(String filterPrp) {
 		this.filterPrp = filterPrp;
 		return this;
 	}
 	
 //	@Override
-//	public PropertyMapperConfig<Q, P> parameterName(String parameterName) {
+//	public PropertyMapperConfig<Q, F, P, I> parameterName(String parameterName) {
 //		this.parameterName = parameterName;
 //		return this;
 //	}
 	
 	@Override
-	public PropertyMapperConfig<Q, P> participatesInQuery(ParticipatesInQuery participatesInQuery) {
+	public PropertyMapperConfig<Q, F, P, I> participatesInQuery(ParticipatesInQuery participatesInQuery) {
 		this.participatesInQuery = participatesInQuery;
 		return this;
 	}
 	
 	@Override
-	public PropertyMapperConfig<Q, P> onParticipatesNamed(AssignNamedParameter<Q, P> onParticipatesNamed) {
+	public PropertyMapperConfig<Q, F, P, I> onParticipatesNamed(AssignNamedParameter<Q, P> onParticipatesNamed) {
 		this.onParticipatesNamed = onParticipatesNamed;
 		return this;
 	}
 	
 	@Override
-	public PropertyMapperConfig<Q, P> onParticipatesPositional(AssignPositionalParameter<Q, P> onParticipatesPositional) {
+	public PropertyMapperConfig<Q, F, P, I> onParticipatesPositional(AssignPositionalParameter<Q, P> onParticipatesPositional) {
 		this.onParticipatesPositional = onParticipatesPositional;
 		return this;
 	}
 	
 	@Override
-	public ParameterMapperConfig<Q, P> addParameter(String parameterName) {
+	public ParameterMapperConfig<Q, F, P, I> addParameter(String parameterName) {
 		boolean containsKey = this.parameterMappers.containsKey(parameterName);
 		if (containsKey) {
 			throw new IllegalArgumentException(
 					"Parameter with name '" + parameterName + "' already exists and is another instance. Use modifyParameter() to modify an existing parameter.");
 		}
 		
-		ParameterMapperConfig<Q, P> parameterMapperConfig = new ParameterMapperConfigDefault<Q, P>(this).parameterName(parameterName);
+		ParameterMapperConfig<Q, F, P, I> parameterMapperConfig = new ParameterMapperConfigDefault<Q, F, P, I>(this).parameterName(parameterName);
 		this.parameterMappers.put(parameterName, parameterMapperConfig);
 		return parameterMapperConfig;
 	}
 	
 	@Override
-	public ParameterMapperConfig<Q, P> addParameter() {
+	public ParameterMapperConfig<Q, F, P, I> addParameter() {
 		if (this.parameterMappers.size() > 0) {
 			if (this.parameterMappers.size() == 1) {
 				throw new IllegalStateException(
@@ -91,7 +91,7 @@ class PropertyMapperConfigDefault<Q, P> implements PropertyMapperConfigInternal<
 	}
 	
 	@Override
-	public PropertyMapperConfig<Q, P> removeParameter(String parameterName) {
+	public PropertyMapperConfig<Q, F, P, I> removeParameter(String parameterName) {
 		if (parameterName == null) {
 			throw new IllegalArgumentException("parameterName cannot be null");
 		}
@@ -100,12 +100,12 @@ class PropertyMapperConfigDefault<Q, P> implements PropertyMapperConfigInternal<
 	}
 	
 	@Override
-	public ParameterMapperConfig<Q, P> modifyParameter(String parameterName) {
+	public ParameterMapperConfig<Q, F, P, I> modifyParameter(String parameterName) {
         return this.parameterMappers.get(parameterName);
 	}
 	
 	@Override
-	public ParameterMapperConfig<Q, P> modifyParameter() {
+	public ParameterMapperConfig<Q, F, P, I> modifyParameter() {
 		if (this.parameterMappers.size() > 1) {
 			throw new IllegalStateException(
 					"There are multiple parameters. Use modifyParameter(String parameterName) to modify a specific parameter.");
@@ -114,7 +114,7 @@ class PropertyMapperConfigDefault<Q, P> implements PropertyMapperConfigInternal<
 	}
 	
 	@Override
-	public ParameterMapperConfig<Q, P> updateParameter(ParameterMapperConfig<Q, P> parameterMapperConfig) {
+	public ParameterMapperConfig<Q, F, P, I> updateParameter(ParameterMapperConfig<Q, F, P, I> parameterMapperConfig) {
         Optional<String> oldParameterName = this.parameterMappers.entrySet().stream()
                 .filter(entry -> entry.getValue() == parameterMapperConfig)
                 .map(Map.Entry::getKey)
@@ -127,7 +127,7 @@ class PropertyMapperConfigDefault<Q, P> implements PropertyMapperConfigInternal<
         this.parameterMappers.remove(oldParameterName.get());
 		
 		boolean containsKey = this.parameterMappers.containsKey(parameterMapperConfig.getParameterName());
-		ParameterMapperConfig<Q, P> replaced = this.parameterMappers.put(parameterMapperConfig.getParameterName(), parameterMapperConfig);
+		ParameterMapperConfig<Q, F, P, I> replaced = this.parameterMappers.put(parameterMapperConfig.getParameterName(), parameterMapperConfig);
 		if (containsKey && replaced != null && replaced != parameterMapperConfig) {
 			throw new IllegalArgumentException(
 					"Parameter with name '" + parameterMapperConfig.getParameterName() + "' already exists and is another instance. Use modifyParameter() to modify an existing parameter.");
@@ -137,18 +137,18 @@ class PropertyMapperConfigDefault<Q, P> implements PropertyMapperConfigInternal<
 	}
 	
 	@Override
-	public Map<String, ParameterMapperConfig<Q, P>> getParameterMappers() {
+	public Map<String, ParameterMapperConfig<Q, F, P, I>> getParameterMappers() {
 		return this.parameterMappers;
 	}
 	
 //	@Override
-//	public PropertyMapperConfig<Q, P> unpackListItems(boolean unpackListItems) {
+//	public PropertyMapperConfig<Q, F, P, I> unpackListItems(boolean unpackListItems) {
 //		this.unpackListItems = unpackListItems;
 //		return this;
 //	}
 	
 //	@Override
-//	public PropertyMapperConfig<Q, P> repeater(boolean repeater) {
+//	public PropertyMapperConfig<Q, F, P, I> repeater(boolean repeater) {
 //		this.repeater = repeater;
 //		return this;
 //	}
@@ -184,6 +184,11 @@ class PropertyMapperConfigDefault<Q, P> implements PropertyMapperConfigInternal<
 	@Override
 	public String toString() {
 		return "PropertyMapperConfig [filterPrp=" + getFilterPrp() + ", parameters=" + getParameterMappers() + "]";
+	}
+
+	@Override
+	public PropertyMapperConfig<Q, F, I, P> switchType() {
+		return (PropertyMapperConfig<Q, F, I, P>) this;
 	}
 	
 //	@Override

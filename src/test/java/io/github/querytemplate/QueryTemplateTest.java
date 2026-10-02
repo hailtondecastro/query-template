@@ -1,16 +1,17 @@
 package io.github.querytemplate;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.startsWith;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.startsWith;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.text.MatchesPattern.matchesPattern;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.Runtime.Version;
 import java.util.Arrays;
@@ -28,14 +29,17 @@ import javax.script.ScriptException;
 import org.hibernate.query.Query;
 import org.hibernate.type.StandardBasicTypes;
 import org.hibernate.type.Type;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import bsh.Interpreter;
 import io.github.querytemplate.MyFilter.FormalName;
+import io.github.querytemplate.proxy.MethodFilter;
+import io.github.querytemplate.proxy.MethodHandler;
+import io.github.querytemplate.proxy.ProxyFactory;
+import io.github.querytemplate.proxy.ProxyFactoryCreator;
 
 /**
  * Unit tests demonstrating how to use {@link QueryTemplateDefault}. Java port of the
@@ -87,7 +91,7 @@ public class QueryTemplateTest {
 			paramInfo) -> query.setParameterList(position, (Collection) value, itemType);
 	}
 	
-    private void configPropertyMappers(QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig) {
+    private void configPropertyMappers(QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig) {
     	queryTemplateConfig
     		.clearMappers()
     			.addMapper("filterPrp1", String.class).participatesInQuery(ParticipantCheckers.STRING_NOTEMPTY).onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.STRING)).onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.STRING)).done()                                                                             
@@ -151,7 +155,7 @@ public class QueryTemplateTest {
     		;
     }
     
-    private void configPropertyMappersDifferentParamName(QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig) {
+    private void configPropertyMappersDifferentParamName(QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig) {
     	this.configPropertyMappers(queryTemplateConfig);
         for (String prpName : queryTemplateConfig.getMappersConfig().keySet()) {
         	String filterPrp = queryTemplateConfig.modifyMapper(prpName, Object.class).getFilterPrp();
@@ -171,6 +175,37 @@ public class QueryTemplateTest {
     					new FormalName("FOO_FIRST_NAME", "FOO_LAST_NAME") });    	
     }
     
+    private ProxyFactoryCreator proxyFactoryCreator = (config, clazz) -> {
+    	return new ProxyFactory() {
+    		javassist.util.proxy.ProxyFactory javassistProxyFactory = new javassist.util.proxy.ProxyFactory();
+			@Override
+			public void setSuperclass(Class clazz) {
+				this.javassistProxyFactory.setSuperclass(clazz);
+			}
+			@Override
+			public void setInterfaces(Class[] ifs) {
+				this.javassistProxyFactory.setInterfaces(ifs);
+			}
+			@Override
+			public Object create(Class[] paramTypes,
+				Object[] args,
+				MethodHandler mh) throws Throwable {
+				javassist.util.proxy.MethodHandler javassistMethodHandler = 
+						(self, thisMethod, proceed, methodArgs) -> {
+							return mh.invoke(
+									self, 
+									thisMethod, 
+									proceed,
+									methodArgs);
+						};
+				return this.javassistProxyFactory.create(paramTypes, args, javassistMethodHandler);
+			}
+			@Override
+			public void setFilter(MethodFilter mf) {
+				this.javassistProxyFactory.setFilter((method) -> mf.isHandled(method));
+			}
+    	};
+    };
     
     private static String QUERY_BUILD_QUERY_WITHOUT_PARENTHESIS = 
             "/* This comment shows how to place: a backslash using escape (\\\\); an opening bracket (\\[).*/ \n" +
@@ -207,7 +242,7 @@ public class QueryTemplateTest {
     
     public void buildQueryWithoutParenthesisBase(
     	Function<String, String> replacer,
-    	Function<QueryTemplateConfig<Query<MyEntity>>, QueryTemplateConfig<Query<MyEntity>>> configChanger,
+    	Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger,
     	Consumer<QueryMock<MyEntity>> assertsQueryMockDefault,
     	Consumer<QueryMock<MyEntity>> assertsQueryMockAfterFullFilter,
     	Consumer<QueryMock<MyEntity>> assertsQueryMockAfterEmptyFilter) {
@@ -225,15 +260,15 @@ public class QueryTemplateTest {
         mf.setFormalName(null);
         mf.setFormalNamesArr(null);
 
-        QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig =
-        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
         
         this.configPropertyMappers(queryTemplateConfig);
         
         queryTemplateConfig = configChanger.apply(queryTemplateConfig);
         
-        QueryTemplate<Query<MyEntity>> qt = QueryTemplate.of(queryTemplateConfig);
-        QueryTemplateState<Query<MyEntity>> state = qt.buildQueryState(mf);
+        QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
+        QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf);
         LOG.debug("Result:\n" + state.getQueryString());
 
         // filterPrp1 and filterPrp3 are participating in the query, filterPrp2 is not.
@@ -349,6 +384,38 @@ public class QueryTemplateTest {
 		this.buildQueryWithoutParenthesisBase(
 				Function.identity(),
 				Function.identity(),
+				null,
+				null,
+				null
+		);
+    }
+    
+    @Test
+    public void buildQueryWithoutParenthesisPrp4UnpackedLambda() {
+		assertThrows(QueryTemplateException.class, () -> {
+			this.buildQueryWithoutParenthesisBase(
+					Function.identity(),
+					config -> {
+						return config.removeMapper(f -> f.getFilterPrp4()); // `MyFilter::getFilterPrp1` can be used as well. Is it less clear than `f -> f.getFilterPrp4()`?! 
+					},
+					null,
+					null,
+					null
+			);
+		});
+		
+		this.buildQueryWithoutParenthesisBase(
+				Function.identity(),
+				config -> {
+					return config
+							.proxyFactoryCreator(this.proxyFactoryCreator)
+							.removeMapper(f -> f.getFilterPrp1())
+							.addMapper(f -> f.getFilterPrp1())
+								.participatesInQuery(ParticipantCheckers.STRING_NOTEMPTY)
+								.onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.STRING))
+								.onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.STRING))
+							.done();
+				},
 				null,
 				null,
 				null
@@ -540,7 +607,7 @@ public class QueryTemplateTest {
     
     public void buildQueryWithParenthesis(
     	Function<String, String> replacer,
-    	Function<QueryTemplateConfig<Query<MyEntity>>, QueryTemplateConfig<Query<MyEntity>>> configChanger) {
+    	Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger) {
     	
         String query = BUILD_QUERY_WITH_PARENTHESIS;
 
@@ -552,10 +619,10 @@ public class QueryTemplateTest {
         mf.setFormalName(null);
         mf.setFormalNamesArr(null);
 
-        QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig =
-        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
-        QueryTemplateConfig<Query<MyEntity>> queryTemplateCompactConfig =
-        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType())
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateCompactConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class)
         			.compactQueryText(true);
         
         this.configPropertyMappers(queryTemplateConfig);
@@ -565,11 +632,11 @@ public class QueryTemplateTest {
         queryTemplateConfig = configChanger.apply(queryTemplateConfig);
         queryTemplateCompactConfig = configChanger.apply(queryTemplateCompactConfig);
         
-        QueryTemplate<Query<MyEntity>> qt = QueryTemplate.of(queryTemplateConfig);
-        QueryTemplate<Query<MyEntity>> qtCompact = QueryTemplate.of(queryTemplateCompactConfig);
+        QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
+        QueryTemplate<Query<MyEntity>, MyFilter> qtCompact = QueryTemplate.of(queryTemplateCompactConfig);
         
-        QueryTemplateState<Query<MyEntity>> state = qt.buildQueryState(mf);
-        QueryTemplateState<Query<MyEntity>> stateCompact = qtCompact.buildQueryState(mf);
+        QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf);
+        QueryTemplateState<Query<MyEntity>, MyFilter> stateCompact = qtCompact.buildQueryState(mf);
         LOG.debug("Result:\n" + state.getQueryString());
         LOG.debug("Compact result:\n" + stateCompact.getQueryString());
         
@@ -683,7 +750,7 @@ public class QueryTemplateTest {
     
     public void buildQueryWithQueryHelperBase(
 		Function<String, String> replacer,
-		Function<QueryTemplateConfig<Query<MyEntity>>, QueryTemplateConfig<Query<MyEntity>>> configChanger) {
+		Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger) {
         String helperQuery = BUILD_QUERY_WITH_QUERY_HELPER_HELPER_QUERY;
 
         String query = BUILD_QUERY_WITH_QUERY_HELPER;
@@ -697,8 +764,8 @@ public class QueryTemplateTest {
         mf.setFormalName(null);
         mf.setFormalNamesArr(null);
         
-        QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig =
-        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
         this.configPropertyMappers(queryTemplateConfig);
 
 		queryTemplateConfig.addQueryHelper("EmployeeQH", helperQuery);
@@ -706,10 +773,10 @@ public class QueryTemplateTest {
 		queryTemplateConfig = configChanger.apply(queryTemplateConfig);
 		
         //QueryTemplate qtHelper = new QueryTemplate(helperQuery, mappers);
-        QueryTemplate<Query<MyEntity>> qt = QueryTemplate.of(queryTemplateConfig);
+        QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
         //qt.addQueryHelper("EmployeeQH", qtHelper);
 
-        QueryTemplateState<Query<MyEntity>> state = qt.buildQueryState(mf);
+        QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf);
         LOG.debug("Result:\n" + state.getQueryString());
 
         // The helper query is inlined and its participating in the query criterion is present.
@@ -771,7 +838,7 @@ public class QueryTemplateTest {
   
     public void conditionedQueryHelperBase(
     		Function<String, String> replacer,
-    		Function<QueryTemplateConfig<Query<MyEntity>>, QueryTemplateConfig<Query<MyEntity>>> configChanger
+    		Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger
     	) {
         String helperQuery = CONDITIONED_QUERY_HELPER_QUERY_HELPER;
 
@@ -779,19 +846,19 @@ public class QueryTemplateTest {
         query = replacer.apply(query);
         helperQuery = replacer.apply(helperQuery);
 
-        QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig =
-        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
 
 		queryTemplateConfig.addQueryHelper("EmployeeQH", helperQuery);
 		this.configPropertyMappers(queryTemplateConfig);
 		queryTemplateConfig = configChanger.apply(queryTemplateConfig);
 		
-        QueryTemplate<Query<MyEntity>> qt = QueryTemplate.of(queryTemplateConfig);
+        QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
 
         // filterPrp5 participating in the query -> helper is used.
         MyFilter participatingFilter = new MyFilter("foo1", "", "foo3", Arrays.asList("foo", "baa"), "bla",
                 null, Arrays.asList(1, 2, 3), new Integer[] { 4, 5, 6 });
-        QueryTemplateState<Query<MyEntity>> participatingState = qt.buildQueryState(participatingFilter);
+        QueryTemplateState<Query<MyEntity>, MyFilter> participatingState = qt.buildQueryState(participatingFilter);
         LOG.debug("Participating in the query:\n" + participatingState.getQueryString());
         assertThat(participatingState.getQueryString(), containsString(replacer.apply("FUNC.att1 = :filterPrp1")));
         assertThat(participatingState.getQueryString(), containsString(replacer.apply("EMPLOYEESTB")));
@@ -805,7 +872,7 @@ public class QueryTemplateTest {
         empty.setFormalName(null);
         empty.setFormalNamesArr(null);
         
-        QueryTemplateState<Query<MyEntity>> stateEmpty = qt.buildQueryState(empty);
+        QueryTemplateState<Query<MyEntity>, MyFilter> stateEmpty = qt.buildQueryState(empty);
         
         LOG.debug("Empty:\n" + stateEmpty.getQueryString());
         assertThat(stateEmpty.getQueryString(), not(containsString(replacer.apply("FUNC.att1 = :filterPrp1"))));
@@ -843,19 +910,19 @@ public class QueryTemplateTest {
     public void usedParameterTestBase(
     		Function<String, String> replacer, 
     		Function<
-    			QueryTemplateConfig<Query<MyEntity>>, 
-    			QueryTemplateConfig<Query<MyEntity>>
+    			QueryTemplateConfig<Query<MyEntity>, MyFilter>, 
+    			QueryTemplateConfig<Query<MyEntity>, MyFilter>
     		> configChanger) {
         String query = USED_PARAMETER_QUERY;
         query = replacer.apply(query);
 
-        QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig =
-        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
         this.configPropertyMappers(queryTemplateConfig);
         
         queryTemplateConfig = configChanger.apply(queryTemplateConfig);
         
-        QueryTemplate<Query<MyEntity>> qt = QueryTemplate.of(queryTemplateConfig);
+        QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
         this.configPropertyMappers(queryTemplateConfig);
 
         // filterPrp5 participating in the query -> helper is used.
@@ -864,7 +931,7 @@ public class QueryTemplateTest {
         mf.setFormalName(null);
         mf.setFormalNamesArr(null);
         
-        QueryTemplateState<Query<MyEntity>> state = qt.buildQueryState(mf );
+        QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf );
         LOG.debug("participating in the query:\n" + state.getQueryString());
         assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*\\(FUNC\\.att1 = :filterPrp1 and FUNC\\.att2 = :filterPrp2\\).*")));
         
@@ -938,7 +1005,7 @@ public class QueryTemplateTest {
     		interpreter = new Interpreter();
     	}
 		@Override
-		public <Q> Object binding(QueryTemplateState<Q> preliminarState,
+		public Object binding(QueryTemplateState<?, ?> preliminaryState,
 			String name,
 			Object value) throws Throwable {
 			if (value instanceof Map<?, ?>) {
@@ -953,12 +1020,12 @@ public class QueryTemplateTest {
 		}
 
 		@Override
-		public <Q> void clearBindings(QueryTemplateState<Q> preliminarState) throws Throwable {
+		public void clearBindings(QueryTemplateState<?, ?> preliminaryState) throws Throwable {
 			interpreter.getNameSpace().clear();
 		}
 
 		@Override
-		public <Q> Object eval(QueryTemplateState<Q> preliminarState,
+		public Object eval(QueryTemplateState<?, ?> preliminaryState,
 			String script) throws Throwable {
 			return interpreter.eval(script);
 		}
@@ -982,7 +1049,7 @@ public class QueryTemplateTest {
     		interpreter = new Interpreter();
     	}
 		@Override
-		public <Q> Object binding(QueryTemplateState<Q> preliminarState,
+		public Object binding(QueryTemplateState<?, ?> preliminaryState,
 			String name,
 			Object value) throws Throwable {
 			interpreter.set(name, value);
@@ -990,18 +1057,18 @@ public class QueryTemplateTest {
 		}
 
 		@Override
-		public <Q> void clearBindings(QueryTemplateState<Q> preliminarState) throws Throwable {
+		public void clearBindings(QueryTemplateState<?, ?> preliminaryState) throws Throwable {
 			interpreter.getNameSpace().clear();
 		}
 
 		@Override
-		public <Q> Object eval(QueryTemplateState<Q> preliminarState,
+		public Object eval(QueryTemplateState<?, ?> preliminaryState,
 			String script) throws Throwable {
 			return interpreter.eval(script);
 		}
     }
     
-    @Before
+	@BeforeEach
     public void setupEvalRunners() {
         this.groovyEvalRunnerCreatorCompiled =
         		new JSR233EvalRunnerCreator(
@@ -1068,7 +1135,7 @@ public class QueryTemplateTest {
             "     [extra][free.att3 = 'foo'] ";
     
     public void buildQueryWithEval(
-    	Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator,
+    	Function<QueryTemplateState<?, ?>, EvalRunner> evalRunnerCreator,
     	Function<String, String> replacer) {
 //    	    	
     	String query = BUILD_QUERY_WITH_EVAL_QUERY;
@@ -1084,15 +1151,15 @@ public class QueryTemplateTest {
         mf.setFormalName(null);
         mf.setFormalNamesArr(null);    
 
-        QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig =
-        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
         
         this.configPropertyMappers(queryTemplateConfig);
         
         queryTemplateConfig.evalRunnerCreator(evalRunnerCreator);
         
-        QueryTemplate<Query<MyEntity>> qt = QueryTemplate.of(queryTemplateConfig);
-        QueryTemplateState<Query<MyEntity>> state = qt.buildQueryState(mf);
+        QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
+        QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf);
         LOG.debug("Result:\n" + state.getQueryString());
 
         // filterPrp1 and filterPrp3 are participating in the query, filterPrp2 is not.
@@ -1200,24 +1267,19 @@ public class QueryTemplateTest {
     
     public void buildQueryWithEvalGraalVM(JSR233EvalRunnerCreator evalRunnerCreator) {
     	Version javaVersion = Version.parse(System.getProperty("java.version"));
-    	Assume.assumeThat(
-    			"Java version must be 21 or higher for this test to run",
-    			javaVersion.feature(), 
-    			greaterThanOrEqualTo(21)
+    	assumeTrue(javaVersion.feature() >= 21, () ->
+    			"Java version must be 21 or higher for this test to run"
 		);
-    	ClassNotFoundException cnfe = null;
-    	try {
-			Class.forName("org.graalvm.polyglot.Context");
-		} catch (ClassNotFoundException e) {
-			cnfe = e;
-		}
-    	Assume.assumeThat(
-    			"GraalVM polyglot library must be present for this test to run",
-    			cnfe, 
-    			nullValue());
-		this.buildQueryWithEval(
-				evalRunnerCreator,
-				Function.identity());
+    	assumeTrue(() -> {
+	        	try {
+	    			Class.forName("org.graalvm.polyglot.Context");
+	    		} catch (ClassNotFoundException e) {
+	    			return false;
+	    		}
+	    		return true;
+	    	},
+    		() -> "GraalVM polyglot library must be present for this test to run"
+    	);
     }
     
     @Test
@@ -1253,23 +1315,18 @@ public class QueryTemplateTest {
 				(s) -> s);
 	}
 
-    public void buildQueryWithEvalGroovy(Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator) {
+    public void buildQueryWithEvalGroovy(Function<QueryTemplateState<?, ?>, EvalRunner> evalRunnerCreator) {
     	Version javaVersion = Version.parse(System.getProperty("java.version"));
-    	Assume.assumeThat(
-    			"Java version must be 21 or higher for this test to run",
-    			javaVersion.feature(), 
-    			greaterThanOrEqualTo(21)
-		);
-    	ClassNotFoundException cnfe = null;
-    	try {
-			Class.forName("org.codehaus.groovy.jsr223.GroovyScriptEngineImpl");
-		} catch (ClassNotFoundException e) {
-			cnfe = e;
-		}
-    	Assume.assumeThat(
-    			"Groovy JSR223 library must be present for this test to run",
-    			cnfe, 
-    			nullValue());
+    	assumeTrue(javaVersion.feature() >= 21, 
+    			() -> "Java version must be 21 or higher for this test to run");
+		assumeTrue(() -> {
+			try {
+				Class.forName("org.codehaus.groovy.jsr223.GroovyScriptEngineImpl");
+			} catch (ClassNotFoundException e) {
+				return false;
+			}
+			return true;
+		}, () -> "Groovy JSR223 library must be present for this test to run");
     	
 		this.buildQueryWithEval(
 				evalRunnerCreator,
@@ -1298,7 +1355,7 @@ public class QueryTemplateTest {
             "     [$eval$ prp1Prp2Prp3Func()][ ( empl.att1 is null and ( empl.att2 <= empl.att3 ) ) ]  \n";
     
     public void buildQueryWithEvalVarFunction(
-    	Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator,
+    	Function<QueryTemplateState<?, ?>, EvalRunner> evalRunnerCreator,
     	Function<String, String> replacer) {
 //    	    	
     	String query = BUILD_QUERY_WITH_EVAL_VAR_FUNCTION_QUERY;
@@ -1309,15 +1366,15 @@ public class QueryTemplateTest {
         mf.setFilterPrp2("");
         mf.setFilterPrp3("");
 
-        QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig =
-        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
         
         this.configPropertyMappers(queryTemplateConfig);
         
         queryTemplateConfig.evalRunnerCreator(evalRunnerCreator);
         
-        QueryTemplate<Query<MyEntity>> qt = QueryTemplate.of(queryTemplateConfig);
-        QueryTemplateState<Query<MyEntity>> state = qt.buildQueryState(mf);
+        QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
+        QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf);
         LOG.debug("Result:\n" + state.getQueryString());
 
         // filterPrp1 and filterPrp3 are participating in the query, filterPrp2 is not.
@@ -1375,23 +1432,20 @@ public class QueryTemplateTest {
 		);
     }
     
-	public void buildQueryWithEvalVarFunctionGraalVM(Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator) {
+	public void buildQueryWithEvalVarFunctionGraalVM(Function<QueryTemplateState<?, ?>, EvalRunner> evalRunnerCreator) {
     	Version javaVersion = Version.parse(System.getProperty("java.version"));
-    	Assume.assumeThat(
-    			"Java version must be 21 or higher for this test to run",
-    			javaVersion.feature(), 
-    			greaterThanOrEqualTo(21)
-		);
-    	ClassNotFoundException cnfe = null;
-    	try {
-			Class.forName("org.graalvm.polyglot.Context");
-		} catch (ClassNotFoundException e) {
-			cnfe = e;
-		}
-    	Assume.assumeThat(
-    			"GraalVM polyglot library must be present for this test to run",
-    			cnfe, 
-    			nullValue());
+		assumeTrue(
+				javaVersion.feature() >= 21,
+				() -> "Java version must be 21 or higher for this test to run");
+		assumeTrue(() -> {
+			try {
+				Class.forName("org.graalvm.polyglot.Context");
+			} catch (ClassNotFoundException e) {
+				return false;
+				//throw new RuntimeException("GraalVM polyglot library must be present for this test to run", e);
+			}
+			return true;
+		}, () -> "GraalVM polyglot library must be present for this test to run");
     	
     	this.buildQueryWithEvalVarFunction(
     			evalRunnerCreator,
@@ -1413,23 +1467,21 @@ public class QueryTemplateTest {
         );
     }
     
-	public void buildQueryWithEvalVarFunctionGroovy(Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator) {
+	public void buildQueryWithEvalVarFunctionGroovy(Function<QueryTemplateState<?, ?>, EvalRunner> evalRunnerCreator) {
     	Version javaVersion = Version.parse(System.getProperty("java.version"));
-    	Assume.assumeThat(
-    			"Java version must be 21 or higher for this test to run",
-    			javaVersion.feature(), 
-    			greaterThanOrEqualTo(21)
+    	assumeTrue(
+    			javaVersion.feature() >= 21,
+    			() -> "Java version must be 21 or higher for this test to run");
+		assumeTrue(() -> {
+				try {
+					Class.forName("org.codehaus.groovy.jsr223.GroovyScriptEngineImpl");
+				} catch (ClassNotFoundException e) {
+					return false;
+				}
+				return true;
+			}, 
+			() -> "Groovy JSR223 library must be present for this test to run"
 		);
-    	ClassNotFoundException cnfe = null;
-    	try {
-			Class.forName("org.codehaus.groovy.jsr223.GroovyScriptEngineImpl");
-		} catch (ClassNotFoundException e) {
-			cnfe = e;
-		}
-    	Assume.assumeThat(
-    			"Groovy JSR223 library must be present for this test to run",
-    			cnfe, 
-    			nullValue());
 	}
 	
 	@Test
@@ -1443,7 +1495,7 @@ public class QueryTemplateTest {
 	}
 	
 	public void buildQueryWithEvalVarFunctionBeanShell(
-			Function<QueryTemplateState<?>, EvalRunner> evalRunnerCreator,
+			Function<QueryTemplateState<?, ?>, EvalRunner> evalRunnerCreator,
 			Function<String, String> replacer) {
 		this.buildQueryWithEvalVarFunction(
 				evalRunnerCreator, 
@@ -1480,7 +1532,6 @@ public class QueryTemplateTest {
 	}
     
     private static String COMPLEX_PROPERTY_QUERY = 
-            "/* This comment shows how to place: a backslash using escape (\\\\); an opening bracket (\\[).*/ \n" +
             "select empl.att1 as {empl.id}, empl.att2 as {empl.name}, empl.att3 as {empl.department}, 'E' as {empl.category} \n" +
             "   from EMPLOYEESTB empl  \n" +
             "   [filters]  \n" +
@@ -1493,13 +1544,13 @@ public class QueryTemplateTest {
         MyFilter mf = new MyFilter("foo1", "", "foo3", Arrays.asList("foo4.1", "baa4.2"), "",
                 null, null, null, new FormalName("FOO_FIRST_NAME", "FOO_LAST_NAME"), null);
 
-        QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig =
-        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
         
         this.configPropertyMappers(queryTemplateConfig);
         
-        QueryTemplate<Query<MyEntity>> qt = QueryTemplate.of(queryTemplateConfig);
-        QueryTemplateState<Query<MyEntity>> state = qt.buildQueryState(mf);
+        QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
+        QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf);
         LOG.debug("Result:\n" + state.getQueryString());
 
         // filterPrp1 and filterPrp3 are participating in the query, filterPrp2 is not.
@@ -1512,7 +1563,6 @@ public class QueryTemplateTest {
     }
     
     private static String COMPLEX_PROPERTY_REPEAT_QUERY = 
-            "/* This comment shows how to place: a backslash using escape (\\\\); an opening bracket (\\[).*/ \n" +
             "select empl.id, empl.first_name, empl.department_id \n" +
             "   from EMPLOYEESTB empl  \n" +
             "   [filters]  \n" +
@@ -1521,10 +1571,16 @@ public class QueryTemplateTest {
             "     [and] [(]  \n" +
             "       [ formalNamesArr][repeat][or][(empl.first_name like :firstNameArr and empl.last_name like :lastNameArr) ]" +
             "     [)]  \n";
-    @Test
-    public void complexPropertyRepeat() {
+    public void complexPropertyRepeatBase(
+    	Function<String, String> replacer, 
+		Function<
+			QueryTemplateConfig<Query<MyEntity>, MyFilter>,
+			QueryTemplateConfig<Query<MyEntity>, MyFilter>
+    	> configChanger) {
     	String query = COMPLEX_PROPERTY_REPEAT_QUERY;
-        
+        query = replacer.apply(query);
+    	
+    	
         MyFilter mf = new MyFilter("foo1", "", "foo3", Arrays.asList("foo4.1", "baa4.2"), "",
                 null, null, null, 
                 new FormalName("FOO_FIRST_NAME", "FOO_LAST_NAME"), 
@@ -1533,13 +1589,15 @@ public class QueryTemplateTest {
                 		new FormalName("FOO_FIRST_NAME_2", "FOO_LAST_NAME_2")
                 });
 
-        QueryTemplateConfig<Query<MyEntity>> queryTemplateConfig =
-        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType());
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
         
         this.configPropertyMappers(queryTemplateConfig);
         
-        QueryTemplate<Query<MyEntity>> qt = QueryTemplate.of(queryTemplateConfig);
-        QueryTemplateState<Query<MyEntity>> state = qt.buildQueryState(mf);
+        queryTemplateConfig = configChanger.apply(queryTemplateConfig);
+        
+        QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
+        QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf);
         LOG.debug("Result:\n" + state.getQueryString());
 
         // filterPrp1 and filterPrp3 are participating in the query, filterPrp2 is not.
@@ -1551,6 +1609,151 @@ public class QueryTemplateTest {
         assertThat(queryMock.getParameterCalls(), hasItem(containsString("setParameter[firstNameArr_1, FOO_FIRST_NAME_2, org.hibernate.type.StringType")));
         assertThat(queryMock.getParameterCalls(), hasItem(containsString("setParameter[lastNameArr_0, FOO_LAST_NAME_1, org.hibernate.type.StringType")));
         assertThat(queryMock.getParameterCalls(), hasItem(containsString("setParameter[lastNameArr_1, FOO_LAST_NAME_2, org.hibernate.type.StringType"))); 
+    }
+    
+    
+    @Test
+    public void complexPropertyRepeat() {
+		this.complexPropertyRepeatBase(
+				Function.identity(),
+				Function.identity()
+		);
+    }
+    
+    @Test
+    public void complexPropertyRepeatLambda() {
+		this.complexPropertyRepeatBase(
+				Function.identity(),
+				(config) -> config
+					.proxyFactoryCreator(this.proxyFactoryCreator)
+					.removeMapper(f -> f.getFormalName())
+					.removeMapper(f -> f.getFormalNamesArr())
+		        	.addMapper(f -> f.getFormalName())
+		        		.participatesInQuery(ParticipantCheckers.NOTNULL)
+	        			.addParameter("firstName").done()
+	        			.addParameter("lastName").done()
+	        			.onParticipatesNamed(
+	        				(query, name, value, paramInfo) -> {
+	        					if (name.equals("firstName")) {
+	        						query.setParameter(name, value.getFirstName(), StandardBasicTypes.STRING);
+	        					} else if (name.equals("lastName")) {
+	        						query.setParameter(name, value.getLastName(), StandardBasicTypes.STRING);
+	        					}
+	        				}
+						)
+	        		.done()
+		        	.addMapperA(f -> f.getFormalNamesArr())
+		        		.participatesInQuery(ParticipantCheckers.NOTNULL)
+		        		.addParameter("firstNameArr").repeater(true).done()
+		        		.addParameter("lastNameArr").repeater(true).done()
+		        		.switchType()
+		        		.onParticipatesNamed(
+		        				(query, name, value, paramInfo) -> {
+		        					if (paramInfo.getName().equals("firstNameArr")) {
+		        						query.setParameter(name, value.getFirstName(), StandardBasicTypes.STRING);
+		        					} else if (paramInfo.getName().equals("lastNameArr")) {
+		        						query.setParameter(name, value.getLastName(), StandardBasicTypes.STRING);
+		        					}
+		        				}
+		        		)
+		        		.onParticipatesPositional(
+		        				(query, currentPosition, value, parameterInfo) -> {
+		        					if (parameterInfo.getName().equals("firstNameArr")) {
+		        						query.setParameter(currentPosition, value.getFirstName(), StandardBasicTypes.STRING);
+		        					} else if (parameterInfo.getName().equals("lastNameArr")) {
+		        						query.setParameter(currentPosition, value.getLastName(), StandardBasicTypes.STRING);
+		        					}
+		        				}
+		        		)
+	        		.done()
+		);
+    }
+    
+    private static String ON_PARTICIPATE_PER_PARAMETER_QUERY = 
+            "select outs.att1 as {outs.id}, outs.att2 as {outs.name}, outs.att3 as {outs.department}, 'O' as {outs.category} \n" +
+            "   from OUTSOURCEDTB outs \n" +
+            "   [filters]  \n" +
+            "   [where] \n" +
+            "     [filterPrp4][outs.att4 in (:filterPrp4_a)]  \n" +
+            "union  \n" +
+            "select free.att1 as {empl.id}, free.att2 as {empl.name}, free.att3 as {empl.department}, 'F' as {empl.category} \n" +
+            "   from FREELANCERTB {free}  \n" +
+            "   [filters]  \n" +
+            "   [where]  \n" +
+            "     [(] \n" +
+            "       [filterPrp4][repeat][or][ outs.att4 like :filterPrp4_b]  \n" +
+            "     [)]";
+    public void onParticipatePerParameterBase(
+    	Function<String, String> replacer, 
+		Function<
+			QueryTemplateConfig<Query<MyEntity>, MyFilter>,
+			QueryTemplateConfig<Query<MyEntity>, MyFilter>
+    	> configChanger) {
+    	String query = ON_PARTICIPATE_PER_PARAMETER_QUERY;
+        query = replacer.apply(query);
+    	
+        MyFilter mf = new MyFilter("foo1", "", "foo3", Arrays.asList("foo4.1", "baa4.2"), "",
+                null, null, null, 
+                new FormalName("FOO_FIRST_NAME", "FOO_LAST_NAME"), 
+                new FormalName[] {
+                		new FormalName("FOO_FIRST_NAME_1", "FOO_LAST_NAME_1"),
+                		new FormalName("FOO_FIRST_NAME_2", "FOO_LAST_NAME_2")
+                });
+
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
+        
+        this.configPropertyMappers(queryTemplateConfig);
+        
+        queryTemplateConfig
+        	.proxyFactoryCreator(this.proxyFactoryCreator)
+        	.removeMapper(f -> f.getFilterPrp4())
+        	.addMapperC(f -> f.getFilterPrp4())
+        		.participatesInQuery(ParticipantCheckers.COLLECTION_NOTEMPTY)
+	    		.switchType() 
+	    		.addParameter("filterPrp4_b")
+	    			.repeater(true)
+	        		.onParticipatesNamed((q, name, value, paramInfo) -> {
+	    				q.setParameter(name, value, StandardBasicTypes.STRING);
+	        		})
+	        	.done()
+	        	.switchType() //this is necessary because we are changing the 
+	            			  //  type of the mapper from `String` to `Collection<String>`. 
+	            			  //  Without this, the next `addParameter().onParticipatesNamed()` 
+	        	              //  raise compilation error: 
+	        	              //  `The method setParameterList(String, Collection) in the type Query<MyEntity> is not applicable for the arguments (String, String)`
+	    		.addParameter("filterPrp4_a")
+	        		.unpackListItems(false)
+	        		.onParticipatesNamed((q, name, value, paramInfo) -> {
+	    				q.setParameterList(name, value);
+	        		})
+				.done()
+		.done();
+        	
+        queryTemplateConfig = configChanger.apply(queryTemplateConfig);
+        
+        QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
+        QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf);
+        LOG.debug("Result:\n" + state.getQueryString());
+
+        // filterPrp1 and filterPrp3 are participating in the query, filterPrp2 is not.
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+outs\\.att4 in \\(:filterPrp4_a\\).*")));
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*\\(\\s*outs.att4 like :filterPrp4_b_0\\s+or\\s+outs.att4 like :filterPrp4_b_1\\s*\\).*")));
+        
+        QueryMock<MyEntity> queryMock = new QueryMock<>();
+        qt.setParamQuery(state, queryMock.getQuery());
+        assertThat(queryMock.getParameterCalls().size(), equalTo(3));
+        assertThat(queryMock.getParameterCalls(), hasItem(containsString("setParameter[filterPrp4_b_0, foo4.1, org.hibernate.type.StringType")));
+        assertThat(queryMock.getParameterCalls(), hasItem(containsString("setParameter[filterPrp4_b_1, baa4.2, org.hibernate.type.StringType")));
+        assertThat(queryMock.getParameterCalls(), hasItem(containsString("setParameterList[filterPrp4_a, [foo4.1, baa4.2]]"))); 
+    }
+    
+    @Test
+    public void onParticipatePerParameter() {
+    	this.onParticipatePerParameterBase(
+    			Function.identity(),
+    			Function.identity()
+		);
     }
     
     @Test

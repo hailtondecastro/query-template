@@ -3,17 +3,17 @@ package io.github.querytemplate;
 import java.util.List;
 import java.util.Map;
 
-public class QueryTemplateStateDefault<Q> implements QueryTemplateStateInternal<Q> {
-	private QueryTemplate<Q> templateOwner;
+public class QueryTemplateStateDefault<Q, F> implements QueryTemplateStateInternal<Q, F> {
+	private QueryTemplate<Q, F> templateOwner;
 	private String queryString;
-	private Object filter;
-	private Map<PropertyMapper<Q, ?>, List<AssignedParameterInfo<?>>> propertyMapperToAssignedParameterInfo;
-	private Map<PropertyMapper<Q, ?>, Map<Integer,List<AssignedParameterInfo<?>>>> propertyMapperItemIndexToAssignedParameterInfo;
+	private F filter;
+	private Map<PropertyMapper<Q, F, ?>, List<AssignedParameterInfo<?>>> propertyMapperToAssignedParameterInfo;
+	private Map<PropertyMapper<Q, F, ?>, Map<Integer,List<AssignedParameterInfo<?>>>> propertyMapperItemIndexToAssignedParameterInfo;
 	private EvalRunner evalRunner;
 //	/**
 //	 * See {@link #getIsRepeatablePropertyMapper()} for details.
 //	 */
-//	private Map<PropertyMapper<Q, ?>, Boolean> isRepeatablePropertyMapper;
+//	private Map<PropertyMapper<Q, F, ?>, Boolean> isRepeatablePropertyMapper;
 	
 	
 	/**
@@ -25,12 +25,12 @@ public class QueryTemplateStateDefault<Q> implements QueryTemplateStateInternal<
 	 * @param isRepeatablePropertyMapper See {@link #getIsRepeatablePropertyMapper()} for details.
 	 */
 	QueryTemplateStateDefault(
-		QueryTemplate<Q> templateOwner,
+		QueryTemplate<Q, F> templateOwner,
 		String queryString,
-		Object filter,
-		Map<PropertyMapper<Q, ?>, List<AssignedParameterInfo<?>>> propertyMapperToAssignedParameterInfo,
-		Map<PropertyMapper<Q, ?>, Map<Integer,List<AssignedParameterInfo<?>>>> propertyMapperItemIndexToAssignedParameterInfo,
-		Map<PropertyMapper<Q, ?>, Boolean> isRepeatablePropertyMapper) {
+		F filter,
+		Map<PropertyMapper<Q, F, ?>, List<AssignedParameterInfo<?>>> propertyMapperToAssignedParameterInfo,
+		Map<PropertyMapper<Q, F, ?>, Map<Integer,List<AssignedParameterInfo<?>>>> propertyMapperItemIndexToAssignedParameterInfo,
+		Map<PropertyMapper<Q, F, ?>, Boolean> isRepeatablePropertyMapper) {
 		super();
 		this.templateOwner = templateOwner;
 		this.queryString = queryString;
@@ -41,7 +41,7 @@ public class QueryTemplateStateDefault<Q> implements QueryTemplateStateInternal<
 
 
 	@Override
-	public QueryTemplate<Q> getTemplateOwner() {
+	public QueryTemplate<Q, F> getTemplateOwner() {
 		return templateOwner;
 	}
 
@@ -52,7 +52,7 @@ public class QueryTemplateStateDefault<Q> implements QueryTemplateStateInternal<
 
 
 	@Override
-	public Object getFilter() {
+	public F getFilter() {
 		return filter;
 	}
 	
@@ -69,34 +69,34 @@ public class QueryTemplateStateDefault<Q> implements QueryTemplateStateInternal<
 //	 * Mapped to false if property mapper is used on Criterion that is not 
 //	 * marked as repeatable or property mapper is not set as {@link PropertyMapper#isParameterAsList()}.<br>
 //	 */
-//	public Map<PropertyMapper<Q, ?>, Boolean> getIsRepeatablePropertyMapper() {
+//	public Map<PropertyMapper<Q, F, ?>, Boolean> getIsRepeatablePropertyMapper() {
 //		return isRepeatablePropertyMapper;
 //	}
 	
 	@Override
-	public Map<PropertyMapper<Q, ?>, List<AssignedParameterInfo<?>>> getPropertyMapperToAssignedParameterInfo() {
+	public Map<PropertyMapper<Q, F, ?>, List<AssignedParameterInfo<?>>> getPropertyMapperToAssignedParameterInfo() {
 		return propertyMapperToAssignedParameterInfo;
 	}
 
 	@Override
 	public void setPropertyMapperToAssignedParameterInfo(
-		Map<PropertyMapper<Q, ?>, List<AssignedParameterInfo<?>>> propertyMapperToAssignedParameterInfo) {
+		Map<PropertyMapper<Q, F, ?>, List<AssignedParameterInfo<?>>> propertyMapperToAssignedParameterInfo) {
 		this.propertyMapperToAssignedParameterInfo = propertyMapperToAssignedParameterInfo;
 	}
 
 	@Override
-	public Map<PropertyMapper<Q, ?>, Map<Integer, List<AssignedParameterInfo<?>>>> getPropertyMapperItemIndexToAssignedParameterInfo() {
+	public Map<PropertyMapper<Q, F, ?>, Map<Integer, List<AssignedParameterInfo<?>>>> getPropertyMapperItemIndexToAssignedParameterInfo() {
 		return propertyMapperItemIndexToAssignedParameterInfo;
 	}
 
 	@Override
 	public void setPropertyMapperItemIndexToAssignedParameterInfo(
-		Map<PropertyMapper<Q, ?>, Map<Integer, List<AssignedParameterInfo<?>>>> propertyMapperItemIndexToAssignedParameterInfo) {
+		Map<PropertyMapper<Q, F, ?>, Map<Integer, List<AssignedParameterInfo<?>>>> propertyMapperItemIndexToAssignedParameterInfo) {
 		this.propertyMapperItemIndexToAssignedParameterInfo = propertyMapperItemIndexToAssignedParameterInfo;
 	}
 
 	@Override
-	public void setTemplateOwner(QueryTemplate<Q> templateOwner) {
+	public void setTemplateOwner(QueryTemplate<Q, F> templateOwner) {
 		this.templateOwner = templateOwner;
 	}
 
@@ -106,7 +106,7 @@ public class QueryTemplateStateDefault<Q> implements QueryTemplateStateInternal<
 	}
 
 	@Override
-	public void setFilter(Object filter) {
+	public void setFilter(F filter) {
 		this.filter = filter;
 	}
 
@@ -114,7 +114,7 @@ public class QueryTemplateStateDefault<Q> implements QueryTemplateStateInternal<
 //	 * See {@link #getIsRepeatablePropertyMapper()} for details.
 //	 * @param isRepeatablePropertyMapper
 //	 */
-//	void setIsRepeatablePropertyMapper(Map<PropertyMapper<Q, ?>, Boolean> isRepeatablePropertyMapper) {
+//	void setIsRepeatablePropertyMapper(Map<PropertyMapper<Q, F, ?>, Boolean> isRepeatablePropertyMapper) {
 //		this.isRepeatablePropertyMapper = isRepeatablePropertyMapper;
 //	}
 

@@ -3,13 +3,13 @@ package io.github.querytemplate;
 import java.util.List;
 import java.util.Map;
 
-public interface QueryTemplateState<Q> {
+public interface QueryTemplateState<Q, F> {
 
-	QueryTemplate<Q> getTemplateOwner();
+	QueryTemplate<Q, F> getTemplateOwner();
 
 	String getQueryString();
 
-	Object getFilter();
+	F getFilter();
 
-	Map<PropertyMapper<Q, ?>, List<AssignedParameterInfo<?>>> getPropertyMapperToAssignedParameterInfo();
+	Map<PropertyMapper<Q, F, ?>, List<AssignedParameterInfo<?>>> getPropertyMapperToAssignedParameterInfo();
 }

@@ -19,7 +19,7 @@ import javax.script.ScriptException;
  * that indirectly run scripts on {@link JSR233EvalRunnerCreator#eval(QueryTemplateState, String, Bindings)}.<br>
  * 
  */
-public final class JSR233EvalRunnerCreator implements Function<QueryTemplateState<?>, EvalRunner> {
+public final class JSR233EvalRunnerCreator implements Function<QueryTemplateState<?, ?>, EvalRunner> {
     public static enum JSR233ScriptMode {
 		INTERPRETED,
 		COMPILED
@@ -28,7 +28,7 @@ public final class JSR233EvalRunnerCreator implements Function<QueryTemplateStat
 	private ScriptEngine scriptEngine;
     private Compilable compilableEngine;
     private JSR233EvalRunnerCreator.JSR233ScriptMode scriptMode = JSR233EvalRunnerCreator.JSR233ScriptMode.INTERPRETED;
-    private Map<QueryTemplate<?>, Map<String, CompiledScript>> compiledScriptsByTemplate = new HashMap<>();
+    private Map<QueryTemplate<?, ?>, Map<String, CompiledScript>> compiledScriptsByTemplate = new HashMap<>();
     
     public JSR233EvalRunnerCreator(ScriptEngine scriptEngine, JSR233EvalRunnerCreator.JSR233ScriptMode scriptMode) {
 		this.scriptEngine = scriptEngine;
@@ -39,7 +39,7 @@ public final class JSR233EvalRunnerCreator implements Function<QueryTemplateStat
     }
     
 	@Override
-	public EvalRunner apply(QueryTemplateState<?> state) {
+	public EvalRunner apply(QueryTemplateState<?, ?> state) {
 		Bindings bindings = this.scriptEngine.createBindings();
 		if (this.scriptMode == JSR233EvalRunnerCreator.JSR233ScriptMode.COMPILED) {
 			this.compiledScriptsByTemplate.put(state.getTemplateOwner(), new HashMap<>());				
@@ -48,7 +48,7 @@ public final class JSR233EvalRunnerCreator implements Function<QueryTemplateStat
 		return new JSR233EvalRunner(this, bindings);
 	}
 	
-	public Object eval(QueryTemplateState<?> state, String scriptText, Bindings bindings) throws ScriptException {
+	public Object eval(QueryTemplateState<?, ?> state, String scriptText, Bindings bindings) throws ScriptException {
 		if (this.scriptMode == JSR233EvalRunnerCreator.JSR233ScriptMode.COMPILED) {
 			Map<String, CompiledScript> compiledSciptsOfQTemplate = this.compiledScriptsByTemplate.get(state.getTemplateOwner());
 			synchronized (state.getTemplateOwner()) {

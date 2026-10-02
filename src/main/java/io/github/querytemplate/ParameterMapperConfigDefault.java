@@ -1,18 +1,20 @@
 package io.github.querytemplate;
 
-public class ParameterMapperConfigDefault<Q, P> implements ParameterMapperConfig<Q, P> {
-	private PropertyMapperConfigInternal<Q, P> propertyMapperConfig;
+public class ParameterMapperConfigDefault<Q, F, P, I> implements ParameterMapperConfig<Q, F, P, I> {
+	private PropertyMapperConfigInternal<Q, F, P, I> propertyMapperConfig;
 	
 	private String parameterName;
     private boolean unpackListItems = false;
     private boolean repeater = false;
-    
-    ParameterMapperConfigDefault(PropertyMapperConfig<Q, P> propertyMapperConfig) {
-		this.propertyMapperConfig = (PropertyMapperConfigInternal<Q, P>) propertyMapperConfig;
+    private AssignNamedParameter<Q, P> onParticipatesNamed = null;
+    private AssignPositionalParameter<Q, P> onParticipatesPositional = null;
+	
+    ParameterMapperConfigDefault(PropertyMapperConfig<Q, F, P, I> propertyMapperConfig) {
+		this.propertyMapperConfig = (PropertyMapperConfigInternal<Q, F, P, I>) propertyMapperConfig;
     }
     
 	@Override
-	public ParameterMapperConfig<Q, P> parameterName(String parameterName) {
+	public ParameterMapperConfig<Q, F, P, I> parameterName(String parameterName) {
 		if (parameterName == null) {
 			throw new IllegalArgumentException("parameterName cannot be null");	
 		}				
@@ -21,14 +23,26 @@ public class ParameterMapperConfigDefault<Q, P> implements ParameterMapperConfig
 	}
 	
 	@Override
-	public ParameterMapperConfig<Q, P> unpackListItems(boolean unpackListItems) {
+	public ParameterMapperConfig<Q, F, P, I> unpackListItems(boolean unpackListItems) {
 		this.unpackListItems = unpackListItems;
 		return this;
 	}
 	
 	@Override
-	public ParameterMapperConfig<Q, P> repeater(boolean repeater) {
+	public ParameterMapperConfig<Q, F, P, I> repeater(boolean repeater) {
 		this.repeater = repeater;
+		return this;
+	}
+	
+	@Override
+	public ParameterMapperConfig<Q, F, P, I> onParticipatesNamed(AssignNamedParameter<Q, P> onParticipatesNamed) {
+		this.onParticipatesNamed = onParticipatesNamed;
+		return this;
+	}
+	
+	@Override
+	public ParameterMapperConfig<Q, F, P, I> onParticipatesPositional(AssignPositionalParameter<Q, P> onParticipatesPositional) {
+		this.onParticipatesPositional = onParticipatesPositional;
 		return this;
 	}
 	
@@ -51,7 +65,17 @@ public class ParameterMapperConfigDefault<Q, P> implements ParameterMapperConfig
 	}
 	
 	@Override
-	public PropertyMapperConfig<Q, P> done() {
+	public AssignNamedParameter<Q, P> getOnParticipatesNamed() {
+		return this.onParticipatesNamed;
+	}
+	
+	@Override
+	public AssignPositionalParameter<Q, P> getOnParticipatesPositional() {
+		return this.onParticipatesPositional;
+	}
+	
+	@Override
+	public PropertyMapperConfig<Q, F, P, I> done() {
 		this.propertyMapperConfig.updateParameter(this);
 		return this.propertyMapperConfig;
 	}
