@@ -139,4 +139,13 @@ public class QueryTemplateStateDefault<Q, F> implements QueryTemplateStateIntern
 	public void setEvalRunner(EvalRunner evalRunner) {
 		this.evalRunner = evalRunner;
 	}
+
+
+	@Override
+	public String toString() {
+		return "QueryTemplateStateDefault [templateOwner=" + templateOwner + ", propertyMapperToAssignedParameterInfo="
+				+ propertyMapperToAssignedParameterInfo + ", propertyMapperItemIndexToAssignedParameterInfo="
+				+ propertyMapperItemIndexToAssignedParameterInfo + ", evalRunner=" + evalRunner + ", filter=" + filter
+				+ ", queryString=" + queryString + "]";
+	}
 }

@@ -10,4 +10,5 @@ public interface AssignedParameterInfoInternal<P> extends AssignedParameterInfo<
 
 	void setPosition(Integer position);
 
+	void setValue(P value);
 }

@@ -65,6 +65,8 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     private Function<QueryTemplateState<?, ?>, EvalRunner> evalRunnerCreator;
     private ProxyFactoryCreator proxyFactoryCreator;
     private Class<F> filterClass;
+    private boolean removeComments = false;
+    private boolean shrinkBlankLinesAfterBuild = false;
     
 	QueryTemplateConfigRoot(String queryText, Class<F> filterClass) {
 		this.filterClass = filterClass;
@@ -375,6 +377,18 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
 	}
 	
 	@Override
+	public QueryTemplateConfig<Q, F> removeComments(boolean removeComments) {
+		this.removeComments = removeComments;
+		return this;
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q, F> shrinkBlankLinesAfterBuild(boolean shrinkBlankLinesAfterBuild) {
+		this.shrinkBlankLinesAfterBuild = shrinkBlankLinesAfterBuild;
+		return this;
+	}
+	
+	@Override
 	public Pattern getFiltersToken() {
 		return filtersToken;
 	}
@@ -545,15 +559,17 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
 	}
 	
 	@Override
+	public boolean isRemoveComments() {
+		return removeComments;
+	}
+	
+	@Override
+	public boolean isShrinkBlankLinesAfterBuild() {
+		return shrinkBlankLinesAfterBuild;
+	}
+	
+	@Override
 	public QueryTemplateConfig<Q, F> getParent() {
 		return null;
-	}
-
-	@Override
-	public String toString() {
-		return "QueryTemplateConfigRoot ["
-				+ "convertNamedToPositionalParameters=" + convertNamedToPositionalParameters 
-				+ ", mappersConfigMap=" + mappersConfigMap + ", queryTextOriginal=" + queryTextOriginal
-				+ ", queryHelpers=" + queryHelpers + "]";
 	}
 }

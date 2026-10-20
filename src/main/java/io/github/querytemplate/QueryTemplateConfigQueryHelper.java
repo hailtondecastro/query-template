@@ -307,6 +307,12 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
 	}
 
 	@Override
+	public QueryTemplateConfig<Q, F> removeComments(boolean removeComments) {
+		this.parent.removeComments(removeComments);
+		return this;
+	}
+	
+	@Override
 	public Pattern getFiltersToken() {
 		return this.parent.getFiltersToken();
 	}
@@ -466,6 +472,22 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
 		return this.parent.getProxyFactoryCreator();
 	}	
 
+	@Override
+	public boolean isRemoveComments() {
+		return this.parent.isRemoveComments();
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q, F> shrinkBlankLinesAfterBuild(boolean shrinkBlankLinesAfterBuild) {
+		this.parent.shrinkBlankLinesAfterBuild(shrinkBlankLinesAfterBuild);
+		return this;
+	}
+	
+	@Override
+	public boolean isShrinkBlankLinesAfterBuild() {
+		return this.parent.isShrinkBlankLinesAfterBuild();
+	}
+	
 	@Override
 	public QueryTemplateConfig<Q, F> getParent() {
 		return this.parent;

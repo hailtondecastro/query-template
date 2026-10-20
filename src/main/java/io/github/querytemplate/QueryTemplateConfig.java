@@ -553,6 +553,25 @@ public interface QueryTemplateConfig<Q, F> {
 	QueryTemplateConfig<Q, F> proxyFactoryCreator(ProxyFactoryCreator proxyFactoryCreator);
 	
 	/**
+	 * Sets whether to remove comments from the query text. If true, comments will
+	 * be removed from the query text.
+	 * 
+	 * @param removeComments whether to remove comments from the query text.
+	 * @return This instance for method chaining.
+	 */
+	QueryTemplateConfig<Q, F> removeComments(boolean removeComments);
+	
+	/**
+	 * Sets whether to shrink blank lines after building the query. If true, blank
+	 * lines will be removed from the query text after building.
+	 * 
+	 * @param shrinkBlankLinesAfterBuild whether to shrink blank lines after
+	 *                                   building the query.
+	 * @return This instance for method chaining.
+	 */
+	QueryTemplateConfig<Q, F> shrinkBlankLinesAfterBuild(boolean shrinkBlankLinesAfterBuild);
+	
+	/**
 	 * Gets the parent configuration after defining a QueryHelper. If this is the root configuration, returns null.
 	 * 
 	 * @return Return for the parent config after define QueryHelper. If this is the root config, return null.
@@ -804,6 +823,22 @@ public interface QueryTemplateConfig<Q, F> {
 	 * @return the ProxyFactoryCreator instance.
 	 */
 	ProxyFactoryCreator getProxyFactoryCreator();
+	
+	/**
+	 * Gets whether to remove comments from the query text. See
+	 * {@link #removeComments(boolean)} for more information.
+	 * 
+	 * @return whether to remove comments from the query text.
+	 */
+	boolean isRemoveComments();
+	
+	/**
+	 * Gets whether to shrink blank lines after building the query. See
+	 * {@link #shrinkBlankLinesAfterBuild(boolean)} for more information.
+	 * 
+	 * @return whether to shrink blank lines after building the query.
+	 */
+	boolean isShrinkBlankLinesAfterBuild();
 	
 	/**
 	 * Creates a new instance of QueryTemplateConfig with the specified query text and query class.

@@ -12,7 +12,8 @@ public class AssignedParameterInfoDefault<P> implements AssignedParameterInfoInt
 	private Integer position;
 	private P value;
 	
-	protected void setValue(P value) {
+	@Override
+	public void setValue(P value) {
 		this.value = value;
 	}
 	
@@ -59,5 +60,11 @@ public class AssignedParameterInfoDefault<P> implements AssignedParameterInfoInt
 	@Override
 	public void setPosition(Integer position) {
 		this.position = position;
+	}
+
+	@Override
+	public String toString() {
+		return "AssignedParameterInfoDefault [name=" + name + ", unpackedRepeatedName=" + unpackedRepeatedName
+				+ ", index=" + index + ", position=" + position + ", value=" + value + "]";
 	}
 }

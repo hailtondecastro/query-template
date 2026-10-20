@@ -49,11 +49,12 @@ public interface QueryTemplateInternal<Q, F> extends QueryTemplate<Q, F> {
 		return new QueryTemplateDefault<>(config, (QueryTemplateInternal<SQ, SF>)parent);
 	}
 	
-	/**
-	 * Returns the usable parameters of the query, i.e. the parameters that appear in
-	 * it.
-	 *
-	 * @return the usable parameters.
-	 */
-	Set<PropertyMapper<Q, F, ?>> getUsableMappers();
+//	/**
+//	 * Returns the usable parameters of the query, i.e. the parameters that appear in
+//	 * it.
+//	 * 	
+//	 * After eval feature, this method is not used anymore.
+//	 * @return the usable parameters.
+//	 */
+//	Set<PropertyMapper<Q, F, ?>> getUsableMappers();
 }

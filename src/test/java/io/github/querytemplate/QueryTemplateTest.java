@@ -17,8 +17,10 @@ import java.lang.Runtime.Version;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -211,12 +213,25 @@ public class QueryTemplateTest {
             "/* This comment shows how to place: a backslash using escape (\\\\); an opening bracket (\\[).*/ \n" +
             "select empl.att1 as {empl.id}, empl.att2 as {empl.name}, empl.att3 as {empl.department}, 'E' as {empl.category} \n" +
             "   from EMPLOYEESTB empl  \n" +
+            "   /* THIS IS A BLOCK COMMENT    \n" +
+            "      THIS IS A BLOCK COMMENT    \n" +
+            "      THIS IS A BLOCK COMMENT */ \n" +
+            "   -- THIS IS A LINE COMMENT \n" +
+            "   -- THIS IS A LINE COMMENT \n" +
             "   [filters]  \n" +
             "   [where]  \n" +
             "     [filterPrp1][ empl.att1 = :filterPrp1]  \n" +
             "     [filterPrp2][ empl.att2 > :filterPrp2]  \n" +
-            "     [filterPrp3][ (empl.att3 < :filterPrp3 or empl.att3 > 100)]  \n" +
-            "     [extra][empl.att4 = 'foo']  \n" +
+            "     [filterPrp3][ \n" +
+            "     (empl.att3 < :filterPrp3 or empl.att3 > 100) \n" +
+            "     /* THIS IS A BLOCK COMMENT INTO DYNAMIC BLOCK   \n" +
+            "        THIS IS A BLOCK COMMENT INTO DYNAMIC BLOCK   \n" +
+            "        THIS IS A BLOCK COMMENT INTO DYNAMIC BLOCK */ \n" +
+            "     ]  \n" +
+            "     [extra][ \n" +
+            "       empl.att4 = 'foo' \n" +
+            "       -- THIS IS A LINE COMMENT INTO DYNAMIC BLOCK \n" +
+            "     ]  \n" +
             "union  \n" +
             "select outs.att1 as {outs.id}, outs.att2 as {outs.name}, outs.att3 as {outs.department}, 'O' as {outs.category} \n" +
             "   from OUTSOURCEDTB outs \n" +
@@ -234,17 +249,19 @@ public class QueryTemplateTest {
             "     [filterPrp5][ free.att1 = :filterPrp5]  \n" +
             "     [filterPrp6][ free.att2 > :filterPrp6]  \n" +
             "     [filterPrp1,filterPrp2,filterPrp3][ /*filterPrp1,filterPrp2,filterPrp3*/  free.att1 = :filterPrp1]  \n" +
-            "     [$any$ filterPrp1,filterPrp2,filterPrp3][ /*$any$ filterPrp1,filterPrp2,filterPrp3*/  free.att1 = :filterPrp1]  \n" +
-            "     [filterPrp1,!filterPrp2,filterPrp3][ /*filterPrp1,!filterPrp2,filterPrp3*/  free.att1 = :filterPrp1]  \n" +
-            "     [!filterPrp5,!filterPrp6][ /*!filterPrp5,!filterPrp6*/  free.att1 = :filterPrp1]  \n" +
-            "     [!filterPrp1,!filterPrp3][ /*!filterPrp1,!filterPrp3*/  free.att1 = :filterPrp1]  \n" +
+            "     [$any$ filterPrp1,filterPrp2,filterPrp3][ /*$any$ filterPrp1,filterPrp2,filterPrp3*/  free.att2 = :filterPrp1]  \n" +
+            "     [filterPrp1,!filterPrp2,filterPrp3][ /*filterPrp1,!filterPrp2,filterPrp3*/  free.att3 = :filterPrp1]  \n" +
+            "     [!filterPrp5,!filterPrp6][ /*!filterPrp5,!filterPrp6*/  free.att4 = :filterPrp1]  \n" +
+            "     [!filterPrp1,!filterPrp3][ /*!filterPrp1,!filterPrp3*/  free.att5 = :filterPrp1]  \n" +
             "     [extra][free.att3 = 'foo'] ";
     
     public void buildQueryWithoutParenthesisBase(
     	Function<String, String> replacer,
-    	Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger,
+    	Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, 
+    	QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger,
+    	BiConsumer<Action, QueryTemplateState<Query<MyEntity>, MyFilter>> assertsQueryText,
     	Consumer<QueryMock<MyEntity>> assertsQueryMockDefault,
-    	Consumer<QueryMock<MyEntity>> assertsQueryMockAfterFullFilter,
+    	Consumer<QueryMock<MyEntity>> assertsQueryMockAfterFullFilter, 
     	Consumer<QueryMock<MyEntity>> assertsQueryMockAfterEmptyFilter) {
     	
         String query = QUERY_BUILD_QUERY_WITHOUT_PARENTHESIS;
@@ -270,23 +287,31 @@ public class QueryTemplateTest {
         QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
         QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf);
         LOG.debug("Result:\n" + state.getQueryString());
+        final QueryTemplateState<Query<MyEntity>, MyFilter> stateF1 = state;
 
-        // filterPrp1 and filterPrp3 are participating in the query, filterPrp2 is not.
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+empl\\.att1 = :filterPrp1.*")));
-        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+empl\\.att2 > :filterPrp2.*"))));
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+\\(empl\\.att3 < :filterPrp3 or empl\\.att3 > 100\\).*")));
-        // 'extra' criterion is included because at least one parameter is participating in the query.
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+empl\\.att4 = 'foo'.*")));
-        // filterPrp4 clause belongs to the second (fixed where) block.
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+outs\\.att4 in \\(:filterPrp4_0, :filterPrp4_1\\).*")));
-        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att1 = :filterPrp5.*"))));
-        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att2 > :filterPrp6.*"))));
-        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*filterPrp1,filterPrp2,filterPrp3\\*/  free\\.att1 = :filterPrp1.*"))));
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*\\$any\\$ filterPrp1,filterPrp2,filterPrp3\\*/  free\\.att1 = :filterPrp1.*")));
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*filterPrp1,!filterPrp2,filterPrp3\\*/  free\\.att1 = :filterPrp1.*")));
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp5,!filterPrp6\\*/  free\\.att1 = :filterPrp1.*")));
-        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp1,!filterPrp3\\*/  free\\.att1 = :filterPrp1.*"))));
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att3 = 'foo'.*")));
+		Action assertsQueryTextAction = () -> {
+			// filterPrp1 and filterPrp3 are participating in the query, filterPrp2 is not.
+			assertThat(stateF1.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+empl\\.att1 = :filterPrp1.*")));
+			assertThat(stateF1.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+empl\\.att2 > :filterPrp2.*"))));
+			assertThat(stateF1.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+\\(empl\\.att3 < :filterPrp3 or empl\\.att3 > 100\\).*")));
+			// 'extra' criterion is included because at least one parameter is participating in the query.
+			assertThat(stateF1.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+empl\\.att4 = 'foo'.*")));
+			// filterPrp4 clause belongs to the second (fixed where) block.
+			assertThat(stateF1.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+outs\\.att4 in \\(:filterPrp4_0, :filterPrp4_1\\).*")));
+			assertThat(stateF1.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att1 = :filterPrp5.*"))));
+			assertThat(stateF1.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att2 > :filterPrp6.*"))));
+			assertThat(stateF1.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*filterPrp1,filterPrp2,filterPrp3\\*/  free\\.att1 = :filterPrp1.*"))));
+			assertThat(stateF1.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*\\$any\\$ filterPrp1,filterPrp2,filterPrp3\\*/  free\\.att2 = :filterPrp1.*")));
+			assertThat(stateF1.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*filterPrp1,!filterPrp2,filterPrp3\\*/  free\\.att3 = :filterPrp1.*")));
+			assertThat(stateF1.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp5,!filterPrp6\\*/  free\\.att4 = :filterPrp1.*")));
+			assertThat(stateF1.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp1,!filterPrp3\\*/  free\\.att5 = :filterPrp1.*"))));
+			assertThat(stateF1.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att3 = 'foo'.*")));
+		};
+		if (assertsQueryText == null) {
+			assertsQueryTextAction.execute();
+		} else {
+			assertsQueryText.accept(assertsQueryTextAction, state);
+		}
 
         QueryMock<MyEntity> queryMock = new QueryMock<>();
         qt.setParamQuery(state, queryMock.getQuery());
@@ -323,10 +348,10 @@ public class QueryTemplateTest {
         assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att1 = :filterPrp5.*")));
         assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att2 > :filterPrp6.*")));
         assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*filterPrp1,filterPrp2,filterPrp3\\*/  free\\.att1 = :filterPrp1.*")));
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*\\$any\\$ filterPrp1,filterPrp2,filterPrp3\\*/  free\\.att1 = :filterPrp1.*")));
-        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*filterPrp1,!filterPrp2,filterPrp3\\*/  free\\.att1 = :filterPrp1.*"))));
-        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp5,!filterPrp6\\*/  free\\.att1 = :filterPrp1.*"))));
-        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp1,!filterPrp3\\*/  free\\.att1 = :filterPrp1.*"))));
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*\\$any\\$ filterPrp1,filterPrp2,filterPrp3\\*/  free\\.att2 = :filterPrp1.*")));
+        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*filterPrp1,!filterPrp2,filterPrp3\\*/  free\\.att3 = :filterPrp1.*"))));
+        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp5,!filterPrp6\\*/  free\\.att4 = :filterPrp1.*"))));
+        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp1,!filterPrp3\\*/  free\\.att5 = :filterPrp1.*"))));
         assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att3 = 'foo'.*")));
 
         queryMock = new QueryMock<>();
@@ -364,10 +389,10 @@ public class QueryTemplateTest {
         assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att1 = :filterPrp5.*"))));
         assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att2 > :filterPrp6.*"))));
         assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*filterPrp1,filterPrp2,filterPrp3\\*/  free\\.att1 = :filterPrp1.*"))));
-        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*\\$any\\$ filterPrp1,filterPrp2,filterPrp3\\*/  free\\.att1 = :filterPrp1.*"))));
-        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*filterPrp1,!filterPrp2,filterPrp3\\*/  free\\.att1 = :filterPrp1.*"))));
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp5,!filterPrp6\\*/  free\\.att1 = :filterPrp1.*")));
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp1,!filterPrp3\\*/  free\\.att1 = :filterPrp1.*")));
+        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*\\$any\\$ filterPrp1,filterPrp2,filterPrp3\\*/  free\\.att2 = :filterPrp1.*"))));
+        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*filterPrp1,!filterPrp2,filterPrp3\\*/  free\\.att3 = :filterPrp1.*"))));
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp5,!filterPrp6\\*/  free\\.att4 = :filterPrp1.*")));
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+/\\*!filterPrp1,!filterPrp3\\*/  free\\.att5 = :filterPrp1.*")));
         assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*(where|and)\\s+free\\.att3 = 'foo'.*")));
 
         queryMock = new QueryMock<>();
@@ -386,6 +411,64 @@ public class QueryTemplateTest {
 				Function.identity(),
 				null,
 				null,
+				null, null
+		);
+    }
+
+    @Test
+    public void buildQueryWithoutParenthesisPrp4UnpackedRemoveComments() {
+		this.buildQueryWithoutParenthesisBase(				
+				Function.identity(),
+				Function.identity(),
+				(asserts, state) -> {
+					asserts.execute();
+					assertThat(state.getQueryString(), matchesPattern("(?s).*/\\* THIS IS A BLOCK COMMENT.*?\\*/.*"));
+					assertThat(state.getQueryString(), matchesPattern("(?s).*\n[ \t]*-- THIS IS A LINE COMMENT INTO DYNAMIC BLOCK.*$"));
+				},
+				null,
+				null, 
+				null
+		);
+		this.buildQueryWithoutParenthesisBase(				
+				s -> s.replaceAll("(?s)/\\\\\\*[\\s\\S]*?\\\\\\*/", ""),
+				config -> {
+					return config.removeComments(true);
+				},
+				(asserts, state) -> {
+					asserts.execute();
+					assertThat(state.getQueryString(), not(matchesPattern("(?s).*/\\* THIS IS A BLOCK COMMENT.*?\\*/.*")));
+					assertThat(state.getQueryString(), not(matchesPattern("(?s).*\n[ \t]*-- THIS IS A LINE COMMENT INTO DYNAMIC BLOCK.*$")));
+				},
+				null,
+				null, 
+				null
+		);
+    }
+    
+    @Test
+    public void buildQueryWithoutParenthesisPrp4UnpackedShrinkBlankLines() {
+		this.buildQueryWithoutParenthesisBase(				
+				Function.identity(),
+				Function.identity(),
+				(asserts, state) -> {
+					asserts.execute();
+					assertThat(state.getQueryString().lines().count(), equalTo(44L));
+				},
+				null,
+				null, 
+				null
+		);
+		this.buildQueryWithoutParenthesisBase(				
+				Function.identity(),
+				config -> {
+					return config.shrinkBlankLinesAfterBuild(true);
+				},
+				(asserts, state) -> {
+					asserts.execute();
+					assertThat(state.getQueryString().lines().count(), equalTo(32L));
+				},
+				null,
+				null, 
 				null
 		);
     }
@@ -400,7 +483,7 @@ public class QueryTemplateTest {
 					},
 					null,
 					null,
-					null
+					null, null
 			);
 		});
 		
@@ -418,7 +501,7 @@ public class QueryTemplateTest {
 				},
 				null,
 				null,
-				null
+				null, null
 		);
     }
 
@@ -435,7 +518,7 @@ public class QueryTemplateTest {
 				},
 				null,
 				null,
-				null
+				null, null
     	);
     }
     
@@ -456,7 +539,7 @@ public class QueryTemplateTest {
 				},
 				null,
 				null,
-				null
+				null, null
     	);
     }
     
@@ -481,7 +564,7 @@ public class QueryTemplateTest {
 				},
 				null,
 				null,
-				null
+				null, null
     	);
     }
 
@@ -499,6 +582,7 @@ public class QueryTemplateTest {
 			        return config
 		            	.convertNamedToPositionalParameters(true);
 				},
+				null,
 				qm -> {
 					assertThat(qm.getParameterCalls(), hasSize(7));
 					assertThat(
@@ -530,8 +614,7 @@ public class QueryTemplateTest {
 									startsWith("setParameter[9, foo1, org.hibernate.type.StringType"  )
 							)
 					);
-				},
-				null
+				}, null
     	);
     }
     
@@ -550,6 +633,7 @@ public class QueryTemplateTest {
 			        return config
 		            	.convertNamedToPositionalParameters(true);
 				},
+				null,
 				qm -> {
 					assertThat(qm.getParameterCalls(), hasSize(7));
 					assertThat(
@@ -581,8 +665,7 @@ public class QueryTemplateTest {
 									startsWith("setParameter[9, foo1, org.hibernate.type.StringType"  )
 							)
 					);
-				},
-				null
+				}, null
     	);
     }
     
@@ -593,8 +676,8 @@ public class QueryTemplateTest {
             "   [where] \n" +
             "     [filterPrp1][ empl.att1 = :filterPrp1] \n" +
             "     [filterPrp2][ /*filterPrp2*/ empl.att2 > :filterPrp2] \n" +
-            "     [(] \n" +
-            "       [filterPrp2][ empl.att2 > :filterPrp2] \n" +
+            "     [or][(] \n" +
+            "       [filterPrp2][and][ empl.att2 > :filterPrp2] \n" +
             "       [filterPrp2][and][ empl.att2 > :filterPrp2] \n" +
             "     [)] \n" +
             "     [filterPrp1][or][ empl.att1 = :filterPrp1] \n" +
@@ -605,7 +688,7 @@ public class QueryTemplateTest {
             "     [)] \n" +
             "     [extra][empl.att4 = 'foo'] \n";
     
-    public void buildQueryWithParenthesis(
+    public void buildQueryWithParenthesisBase(
     	Function<String, String> replacer,
     	Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger) {
     	
@@ -676,7 +759,7 @@ public class QueryTemplateTest {
         // The repeat token unfolds filterPrp7/filterPrp8 into indexed parameters.
         assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*and\\s*\\(\\s*\\(\\s*\\(empl\\.att7 = :filterPrp7_0 and empl\\.att8 = :filterPrp8_0\\) or  \\(empl\\.att7 = :filterPrp7_1 and empl\\.att8 = :filterPrp8_1\\) or  \\(empl\\.att7 = :filterPrp7_2 and empl\\.att8 = :filterPrp8_2\\)\\s*\\)\\s*\\).*")));
         assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*and\\s*empl.att4 = 'foo'.*")));
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*and\\s*\\(\\s*empl.att2 > :filterPrp2\\s*and\\s*empl.att2 > :filterPrp2\\s*\\).*")));
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*or\\s*\\(\\s*empl.att2 > :filterPrp2\\s*and\\s*empl.att2 > :filterPrp2\\s*\\).*")));
 
         queryMock = new QueryMock<>();
         qt.setParamQuery(state, queryMock.getQuery());
@@ -715,7 +798,7 @@ public class QueryTemplateTest {
 	
     @Test
     public void buildQueryWithParenthesis() {
-		this.buildQueryWithParenthesis(
+		this.buildQueryWithParenthesisBase(
 				Function.identity(), 
 				Function.identity()
 		);
@@ -723,7 +806,7 @@ public class QueryTemplateTest {
 
     @Test
     public void buildQueryWithParenthesisDifferentParamName() {
-    	this.buildQueryWithParenthesis(
+    	this.buildQueryWithParenthesisBase(
     			s -> (
     					s.replaceAll(":filterPrp", ":filterPrm")
     					.replaceAll("setParameter\\[filterPrp", "setParameter\\[filterPrm")
@@ -735,18 +818,35 @@ public class QueryTemplateTest {
     	);
     }
     
+	
+    @Test
+    public void buildQueryWithParenthesisAndFirstProperties() {
+		this.buildQueryWithParenthesisBase(
+				Function.identity(), 
+				(config) -> {
+					this.configPropertyMappers(config);
+					config.modifyMapper("filterPrp1", String.class)
+							.participatesInQuery(ParticipantCheckers.STRING_NOTEMPTY)
+							.onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.STRING))
+							.onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.STRING))
+							.done();
+					return config;
+				}
+		);
+    }
+
     private static final String BUILD_QUERY_WITH_QUERY_HELPER_HELPER_QUERY =
-            "select FUNC.att1, FUNC.att2, FUNC.att3, 'F' as category \n" +
-            "   from EMPLOYEESTB FUNC \n" +
+            "select EMPL.att1, EMPL.att2, EMPL.att3, 'F' as category \n" +
+            "   from EMPLOYEESTB EMPL \n" +
             "   [filters] \n" +
             "   [where] \n" +
-            "     [filterPrp1][ FUNC.att1 = :filterPrp1] \n" +
-            "     [extra][FUNC.att4 = 'foo'] \n";    		
+            "     [filterPrp1][ EMPL.att1 = :filterPrp1] \n" +
+            "     [extra][EMPL.att4 = 'foo'] \n";    		
     private static final String BUILD_QUERY_WITH_QUERY_HELPER =
-            "select FUNC_H_SQ.att1 as {empl.id} \n" +
+            "select EMPL_H_SQ.att1 as {empl.id} \n" +
             "   from ( \n" +
             "     [Q:EmployeeQH]" +
-            "   ) FUNC_H_SQ\n";
+            "   ) EMPL_H_SQ\n";
     
     public void buildQueryWithQueryHelperBase(
 		Function<String, String> replacer,
@@ -780,16 +880,16 @@ public class QueryTemplateTest {
         LOG.debug("Result:\n" + state.getQueryString());
 
         // The helper query is inlined and its participating in the query criterion is present.
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*FUNC.att1 = :filterPrp1\\s*and\\s*FUNC.att4 = 'foo'.*")));
-        assertThat(state.getQueryString(), containsString(replacer.apply("FUNC_H_SQ")));
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*EMPL.att1 = :filterPrp1\\s*and\\s*EMPL.att4 = 'foo'.*")));
+        assertThat(state.getQueryString(), containsString(replacer.apply("EMPL_H_SQ")));
         
         mf = this.createMyFilterFull();
         
         state = qt.buildQueryState(mf);
         
         // The helper query is in-lined and its participating in the query criterion is present.
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*FUNC.att1 = :filterPrp1\\s*and\\s*FUNC.att4 = 'foo'.*")));
-        assertThat(state.getQueryString(), containsString(replacer.apply("FUNC_H_SQ")));
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*EMPL.att1 = :filterPrp1\\s*and\\s*EMPL.att4 = 'foo'.*")));
+        assertThat(state.getQueryString(), containsString(replacer.apply("EMPL_H_SQ")));
         
         //Empty
         mf = new MyFilter();
@@ -797,8 +897,8 @@ public class QueryTemplateTest {
         state = qt.buildQueryState(mf);
         
         // The helper query is inlined and its participating in the query criterion is present.
-        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*where\\s*FUNC.att1 = :filterPrp1\\s*and\\s*FUNC.att4 = 'foo'.*"))));
-        assertThat(state.getQueryString(), containsString(replacer.apply("FUNC_H_SQ")));
+        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*where\\s*EMPL.att1 = :filterPrp1\\s*and\\s*EMPL.att4 = 'foo'.*"))));
+        assertThat(state.getQueryString(), containsString(replacer.apply("EMPL_H_SQ")));
     }
     
     @Test
@@ -823,18 +923,109 @@ public class QueryTemplateTest {
 		);
     }
     
-    private static final String CONDITIONED_QUERY_HELPER_QUERY_HELPER =
-            "select FUNC.att1 from EMPLOYEESTB FUNC \n" +
+    private static final String BUILD_QUERY_WITH_QUERY_HELPER_EVAL_HELPER_QUERY =
+            "select EMPL.att1, EMPL.att2, EMPL.att3, 'F' as category \n" +
+            "   from EMPLOYEESTB EMPL \n" +
             "   [filters] \n" +
             "   [where] \n" +
-            "     [filterPrp1][ FUNC.att1 = :filterPrp1] \n";
+            "     [$eval$ pp.filterPrp1][ EMPL.att1 IS NOT NULL ] \n" +
+            "     [extra][EMPL.att4 = 'foo'] \n";    		
+    private static final String BUILD_QUERY_WITH_QUERY_HELPER_EVAL =
+            "select EMPL_H_SQ.att1 as {empl.id} \n" +
+            "   from ( \n" +
+            "     [Q:EmployeeQH]" +
+            "   ) EMPL_H_SQ\n";
+    
+    public void buildQueryWithQueryHelperEvalBase(
+		Function<String, String> replacer,
+		Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger) {
+        String helperQuery = BUILD_QUERY_WITH_QUERY_HELPER_EVAL_HELPER_QUERY;
+
+        String query = BUILD_QUERY_WITH_QUERY_HELPER_EVAL;
+
+        query = replacer.apply(query);
+        helperQuery = replacer.apply(helperQuery);
+        
+        MyFilter mf = this.createMyFilterFull();
+        mf.setFilterPrp2("");
+        mf.setFilterPrp6(null);
+        mf.setFormalName(null);
+        mf.setFormalNamesArr(null);
+        
+        QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig =
+        		QueryTemplateConfig.of(query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
+        this.configPropertyMappers(queryTemplateConfig);
+
+		queryTemplateConfig.addQueryHelper("EmployeeQH", helperQuery);
+		
+		queryTemplateConfig.evalRunnerCreator(this.nashornEvalRunnerCreatorCompiled);
+        
+		queryTemplateConfig = configChanger.apply(queryTemplateConfig);
+		
+        //QueryTemplate qtHelper = new QueryTemplate(helperQuery, mappers);
+        QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
+        //qt.addQueryHelper("EmployeeQH", qtHelper);
+
+        QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf);
+        LOG.debug("Result:\n" + state.getQueryString());
+
+        // The helper query is inlined and its participating in the query criterion is present.
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*EMPL.att1 IS NOT NULL\\s*and\\s*EMPL.att4 = 'foo'.*")));
+        assertThat(state.getQueryString(), containsString(replacer.apply("EMPL_H_SQ")));
+        
+        mf = this.createMyFilterFull();
+        
+        state = qt.buildQueryState(mf);
+        
+        // The helper query is in-lined and its participating in the query criterion is present.
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*EMPL.att1 IS NOT NULL\\s*and\\s*EMPL.att4 = 'foo'.*")));
+        assertThat(state.getQueryString(), containsString(replacer.apply("EMPL_H_SQ")));
+        
+        //Empty
+        mf = new MyFilter();
+        
+        state = qt.buildQueryState(mf);
+        
+        // The helper query is inlined and its participating in the query criterion is present.
+        assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*where\\s*EMPL.att1 = :filterPrp1\\s*and\\s*EMPL.att4 = 'foo'.*"))));
+        assertThat(state.getQueryString(), containsString(replacer.apply("EMPL_H_SQ")));
+    }
+    
+    @Test
+    public void buildQueryWithQueryHelperEval() {
+		this.buildQueryWithQueryHelperEvalBase(
+				Function.identity(),
+				Function.identity()
+		);
+    }
+
+    @Test
+    public void buildQueryWithQueryHelperEvalDifferentParamName() {
+		this.buildQueryWithQueryHelperEvalBase(
+				s -> (
+						s.replaceAll(":filterPrp", ":filterPrm")
+						.replaceAll("setParameter\\[filterPrp", "setParameter\\[filterPrm")
+				),
+				config -> {
+					this.configPropertyMappersDifferentParamName(config);
+					return config;
+				}
+		);
+    }
+    
+    
+    private static final String CONDITIONED_QUERY_HELPER_QUERY_HELPER =
+            "select EMPL.att1 from EMPLOYEESTB EMPL \n" +
+            "   [filters] \n" +
+            "   [where] \n" +
+            "     [filterPrp1][ EMPL.att1 = :filterPrp1] \n";
     private static final String CONDITIONED_QUERY_HELPER_QUERY =
-            "select FUNC_H_SQ.att1 as {empl.id} \n" +
+            "select EMPL_H_SQ.att1 as {empl.id} \n" +
             "   from ( \n" +
             "   [filters] \n" +
             "     [filterPrp5] [no_operator][Q:EmployeeQH]" +
             "     [!filterPrp5][no_operator][ SELECT 'NOTHING' FROM DUAL]" +
-            "   ) FUNC_H_SQ\n";
+            "   ) EMPL_H_SQ\n";
   
     public void conditionedQueryHelperBase(
     		Function<String, String> replacer,
@@ -860,7 +1051,7 @@ public class QueryTemplateTest {
                 null, Arrays.asList(1, 2, 3), new Integer[] { 4, 5, 6 });
         QueryTemplateState<Query<MyEntity>, MyFilter> participatingState = qt.buildQueryState(participatingFilter);
         LOG.debug("Participating in the query:\n" + participatingState.getQueryString());
-        assertThat(participatingState.getQueryString(), containsString(replacer.apply("FUNC.att1 = :filterPrp1")));
+        assertThat(participatingState.getQueryString(), containsString(replacer.apply("EMPL.att1 = :filterPrp1")));
         assertThat(participatingState.getQueryString(), containsString(replacer.apply("EMPLOYEESTB")));
         assertThat(participatingState.getQueryString(), not(containsString(replacer.apply("SELECT 'NOTHING' FROM DUAL"))));
 
@@ -875,7 +1066,7 @@ public class QueryTemplateTest {
         QueryTemplateState<Query<MyEntity>, MyFilter> stateEmpty = qt.buildQueryState(empty);
         
         LOG.debug("Empty:\n" + stateEmpty.getQueryString());
-        assertThat(stateEmpty.getQueryString(), not(containsString(replacer.apply("FUNC.att1 = :filterPrp1"))));
+        assertThat(stateEmpty.getQueryString(), not(containsString(replacer.apply("EMPL.att1 = :filterPrp1"))));
         assertThat(stateEmpty.getQueryString(), containsString("SELECT 'NOTHING' FROM DUAL"));
     }
     
@@ -902,10 +1093,10 @@ public class QueryTemplateTest {
     }
     
     private static final String USED_PARAMETER_QUERY =
-            "select FUNC.att1 from EMPLOYEESTB FUNC \n" +
+            "select EMPL.att1 from EMPLOYEESTB EMPL \n" +
             "   [filters] \n" +
             "   [where] \n" +
-            "     [filterPrp1AndfilterPrp2][ (FUNC.att1 = :filterPrp1 and FUNC.att2 = :filterPrp2) ] \n";
+            "     [filterPrp1AndfilterPrp2][ (EMPL.att1 = :filterPrp1 and EMPL.att2 = :filterPrp2) ] \n";
     
     public void usedParameterTestBase(
     		Function<String, String> replacer, 
@@ -933,7 +1124,7 @@ public class QueryTemplateTest {
         
         QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf );
         LOG.debug("participating in the query:\n" + state.getQueryString());
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*\\(FUNC\\.att1 = :filterPrp1 and FUNC\\.att2 = :filterPrp2\\).*")));
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*\\(EMPL\\.att1 = :filterPrp1 and EMPL\\.att2 = :filterPrp2\\).*")));
         
         QueryMock<MyEntity> queryMock = new QueryMock<>();
         qt.setParamQuery(state, queryMock.getQuery());
