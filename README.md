@@ -35,7 +35,7 @@ mvn clean verify
 <dependency>
     <groupId>io.github.hailtondecastro</groupId>
     <artifactId>query-template</artifactId>
-    <version>0.1.7</version>
+    <version>0.1.5</version>
 </dependency>
 ```
 
