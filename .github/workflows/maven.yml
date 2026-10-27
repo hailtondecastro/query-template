@@ -54,7 +54,7 @@ jobs:
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
       - name: Publish to Maven Central
-        run: mvn -B -Prelease deploy -Dmaven.test.skip=true
+        run: mvn -B -X -Prelease deploy -Dmaven.test.skip=true
         env:
           MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
