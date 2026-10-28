@@ -64,7 +64,7 @@ jobs:
             maven-version: '3.9.9' # 3.10: Problem encountered during deployment. Ref.: https://github.com/marketplace/actions/setup-apache-maven
           
       - name: Publish to Maven Central
-        run: mvn -B -X -Prelease deploy -Dmaven.test.skip=true
+        run: mvn -B -Prelease deploy -Dmaven.test.skip=true
         env:
           MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
