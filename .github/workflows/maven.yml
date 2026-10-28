@@ -27,9 +27,9 @@ jobs:
           cache: maven 
 
       - name: Set up Maven 3.9
-        uses: batmahdi/setup-maven@v2
+        uses: batmahdi/setup-maven@v3
         with:
-            maven-version: '3.9.9' # 3.10: Problem encountered during deployment
+            maven-version: '3.9.9' # 3.10: Problem encountered during deployment. Ref.: https://github.com/marketplace/actions/setup-apache-maven
           
       - name: Build and test with Maven
         run: mvn -B verify -P jdk${{ matrix.java-version }}
@@ -59,9 +59,9 @@ jobs:
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
       - name: Set up Maven 3.9
-        uses: batmahdi/setup-maven@v2
+        uses: batmahdi/setup-maven@v3
         with:
-            maven-version: '3.9.9' # 3.10: Problem encountered during deployment
+            maven-version: '3.9.9' # 3.10: Problem encountered during deployment. Ref.: https://github.com/marketplace/actions/setup-apache-maven
           
       - name: Publish to Maven Central
         run: mvn -B -X -Prelease deploy -Dmaven.test.skip=true
