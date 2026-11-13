@@ -96,64 +96,64 @@ public class QueryTemplateTest {
     private void configPropertyMappers(QueryTemplateConfig<Query<MyEntity>, MyFilter> queryTemplateConfig) {
     	queryTemplateConfig
     		.clearMappers()
-    			.addMapper("filterPrp1", String.class).participatesInQuery(ParticipantCheckers.STRING_NOTEMPTY).onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.STRING)).onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.STRING)).done()                                                                             
+    			.addMapper("filterPrp1", String.class).participatesInQuery(ParticipantCheckers.STRING_NOTEMPTY).onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.STRING)).onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.STRING)).done()
     			.addMapper("filterPrp2", String.class).participatesInQuery(ParticipantCheckers.STRING_NOTEMPTY).onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.STRING)).onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.STRING)).done()                                                                             
     			.addMapper("filterPrp3", String.class).participatesInQuery(ParticipantCheckers.STRING_NOTEMPTY).onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.STRING)).onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.STRING)).done()                                                                        
     			.addMapper("filterPrp4", new SimpleTypeToken<Collection<String>>(){}.getRawType()).participatesInQuery(ParticipantCheckers.COLLECTION_NOTEMPTY).onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.STRING)).onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.STRING)).addParameter().unpackListItems(true).done().done()   
     			.addMapper("filterPrp5", String.class).participatesInQuery(ParticipantCheckers.STRING_NOTEMPTY).onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.STRING)).onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.STRING)).done()
     			.addMapper("filterPrp6", MyProperty.class).participatesInQuery(ParticipantCheckers.NOTNULL).onParticipatesNamed(this.simpleOnParticipatesNamed()).onParticipatesPositional(this.simpleOnParticipatesPositional()).done()
     			.addMapper("filterPrp7", new SimpleTypeToken<Collection<String>>(){}.getRawType())
-	        		.participatesInQuery(ParticipantCheckers.COLLECTION_NOTEMPTY)
-	        		.addParameter().repeater(true).done()
-	        		.onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.INTEGER))
-	        		.onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.INTEGER))
-	        		.done()
+    				.participatesInQuery(ParticipantCheckers.COLLECTION_NOTEMPTY)
+    				.addParameter().repeater(true).done()
+    				.onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.INTEGER))
+    				.onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.INTEGER))
+    				.done()
 	        	.addMapper("filterPrp8", Integer[].class).participatesInQuery(ParticipantCheckers.ARRAY_NOTEMPTY).onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.INTEGER)).onParticipatesPositional(this.simpleOnParticipatesPositional(StandardBasicTypes.INTEGER)).addParameter().repeater(true).done().done()
 	        	.addMapper("filterPrp1AndfilterPrp2", Boolean.class).participatesInQuery(ParticipantCheckers.BOOLEAN_TRUE).done()
-	        	.addMapper("formalName", FormalName.class).participatesInQuery(ParticipantCheckers.NOTNULL)
-	        		.addParameter("firstName").done()
-	        		.addParameter("lastName").done()
-	        		.onParticipatesNamed(
-	        				(query, name, value, paramInfo) -> {
-	        					if (name.equals("firstName")) {
-	        						query.setParameter(name, value.getFirstName(), StandardBasicTypes.STRING);
-	        					} else if (name.equals("lastName")) {
-	        						query.setParameter(name, value.getLastName(), StandardBasicTypes.STRING);
-	        					}
-	        				}
-	        		)
-	        		.onParticipatesPositional(
-	        				(query, currentPosition, value, parameterInfo) -> {
-	        					if (parameterInfo.getName().equals("firstName")) {
-	        						query.setParameter(currentPosition, value.getFirstName(), StandardBasicTypes.STRING);
-	        					} else if (parameterInfo.getName().equals("lastName")) {
-	        						query.setParameter(currentPosition, value.getLastName(), StandardBasicTypes.STRING);
-	        					}
-	        				}
-	        		)
+        	.addMapper("formalName", FormalName.class).participatesInQuery(ParticipantCheckers.NOTNULL)
+        		.addParameter("firstName").done()
+        		.addParameter("lastName").done()
+        		.onParticipatesNamed(
+        				(query, name, value, paramInfo) -> {
+        					if (name.equals("firstName")) {
+        						query.setParameter(name, value.getFirstName(), StandardBasicTypes.STRING);
+        					} else if (name.equals("lastName")) {
+        						query.setParameter(name, value.getLastName(), StandardBasicTypes.STRING);
+        					}
+        				}
+        		)
+        		.onParticipatesPositional(
+        				(query, currentPosition, value, parameterInfo) -> {
+        					if (parameterInfo.getName().equals("firstName")) {
+        						query.setParameter(currentPosition, value.getFirstName(), StandardBasicTypes.STRING);
+        					} else if (parameterInfo.getName().equals("lastName")) {
+        						query.setParameter(currentPosition, value.getLastName(), StandardBasicTypes.STRING);
+        					}
+        				}
+        		)
 	        	.done()
-	        	.addMapper("formalNamesArr", FormalName.class).participatesInQuery(ParticipantCheckers.NOTNULL)
-	        		.addParameter("firstNameArr").repeater(true).done()
-	        		.addParameter("lastNameArr").repeater(true).done()
-	        		.onParticipatesNamed(
-	        				(query, name, value, paramInfo) -> {
-	        					if (paramInfo.getName().equals("firstNameArr")) {
-	        						query.setParameter(name, value.getFirstName(), StandardBasicTypes.STRING);
-	        					} else if (paramInfo.getName().equals("lastNameArr")) {
-	        						query.setParameter(name, value.getLastName(), StandardBasicTypes.STRING);
-	        					}
-	        				}
-	        		)
-	        		.onParticipatesPositional(
-	        				(query, currentPosition, value, parameterInfo) -> {
-	        					if (parameterInfo.getName().equals("firstNameArr")) {
-	        						query.setParameter(currentPosition, value.getFirstName(), StandardBasicTypes.STRING);
-	        					} else if (parameterInfo.getName().equals("lastNameArr")) {
-	        						query.setParameter(currentPosition, value.getLastName(), StandardBasicTypes.STRING);
-	        					}
-	        				}
-	        		)
-        	.done()
+        	.addMapper("formalNamesArr", FormalName.class).participatesInQuery(ParticipantCheckers.NOTNULL)
+        		.addParameter("firstNameArr").repeater(true).done()
+        		.addParameter("lastNameArr").repeater(true).done()
+        		.onParticipatesNamed(
+        				(query, name, value, paramInfo) -> {
+        					if (paramInfo.getName().equals("firstNameArr")) {
+        						query.setParameter(name, value.getFirstName(), StandardBasicTypes.STRING);
+        					} else if (paramInfo.getName().equals("lastNameArr")) {
+        						query.setParameter(name, value.getLastName(), StandardBasicTypes.STRING);
+        					}
+        				}
+        		)
+        		.onParticipatesPositional(
+        				(query, currentPosition, value, parameterInfo) -> {
+        					if (parameterInfo.getName().equals("firstNameArr")) {
+        						query.setParameter(currentPosition, value.getFirstName(), StandardBasicTypes.STRING);
+        					} else if (parameterInfo.getName().equals("lastNameArr")) {
+        						query.setParameter(currentPosition, value.getLastName(), StandardBasicTypes.STRING);
+        					}
+        				}
+        		)
+        		.done()
     		;
     }
     
@@ -1760,7 +1760,7 @@ public class QueryTemplateTest {
             "   [where]  \n" +
             "     [filterPrp1][ free.att1 = :filterPrp1]  \n" +
             "     [and] [(]  \n" +
-            "       [ formalNamesArr][repeat][or][(empl.first_name like :firstNameArr and empl.last_name like :lastNameArr) ]" +
+            "       [ formalNamesArr][repeat][or][(empl.first_name like :firstNameArr and empl.last_name like :lastNameArr) ] \n" +
             "     [)]  \n";
     public void complexPropertyRepeatBase(
     	Function<String, String> replacer, 
@@ -1857,6 +1857,71 @@ public class QueryTemplateTest {
 		        				}
 		        		)
 	        		.done()
+		);
+    }
+    
+    @Test
+    public void complexPropertyRepeatAndPrimitiveLambda() {
+		this.complexPropertyRepeatBase(
+				Function.identity(),
+				(config) -> config
+					.proxyFactoryCreator(this.proxyFactoryCreator)					
+	        		.addMapper(f -> f.isPrimitiveBoolPrp())
+	        			.participatesInQuery(ParticipantCheckers.BOOLEAN_TRUE)
+            			.onParticipatesNamed(null)
+            			.onParticipatesPositional(null)
+            		.done()
+		);
+    }
+    
+    @Test
+    public void complexPropertyRepeatAndPrimitiveLambdaPropertiesPatternError() {
+		this.complexPropertyRepeatBase(
+				(s) -> {
+					String result = s;
+					if (s.contains("[where]")) {
+                        result = result + "\n"
+                        		+ "     [and][primitiveBoolPrp][and][someProperty is not null]\n"; 
+                    }
+					return result;
+				},
+				(config) -> config
+					.proxyFactoryCreator(this.proxyFactoryCreator)					
+	        		.addMapper(f -> f.isPrimitiveBoolPrp())
+	        			.participatesInQuery(ParticipantCheckers.BOOLEAN_TRUE)
+            			.onParticipatesNamed(null)
+            			.onParticipatesPositional(null)
+            		.done()
+		);
+    }
+    
+    @Test
+    public void complexPropertyRepeatAndPrimitiveLambdaBigEval() {
+		this.complexPropertyRepeatBase(
+				(s) -> {
+					String result = s;
+					if (s.contains("[where]")) {
+                        result = result + "\n"
+                        		+ "     [and][$eval$ \n "
+                        		+ "         //Here we are using an eval with more than 300 characters and than this is parsed as criteria and not as a parameter. \n"
+                        		+ "         //Here we are using an eval with more than 300 characters and than this is parsed as criteria and not as a parameter. \n"
+                        		+ "         //Here we are using an eval with more than 300 characters and than this is parsed as criteria and not as a parameter. \n"
+                        		+ "         //Here we are using an eval with more than 300 characters and than this is parsed as criteria and not as a parameter. \n"
+                        		+ "         //Here we are using an eval with more than 300 characters and than this is parsed as criteria and not as a parameter. \n"
+                        		+ "         //Here we are using an eval with more than 300 characters and than this is parsed as criteria and not as a parameter. \n"
+                        		+ "         pp.primitiveBoolPrp]"
+                        		+ "     [someProperty is not null]\n"; 
+                    }
+					return result;
+				},
+				(config) -> config
+					.proxyFactoryCreator(this.proxyFactoryCreator)
+					.evalRunnerCreator(this.nashornEvalRunnerCreatorCompiled)
+	        		.addMapper(f -> f.isPrimitiveBoolPrp())
+	        			.participatesInQuery(ParticipantCheckers.BOOLEAN_TRUE)
+            			.onParticipatesNamed(null)
+            			.onParticipatesPositional(null)
+            		.done()
 		);
     }
     
