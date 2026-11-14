@@ -129,6 +129,27 @@ template.setParamQuery(state, query); // binds only the used & participating in 
 
 > Both callback interfaces receive four arguments. Use explicit lambda parameter types (`String name` for named, `int position` for positional) to disambiguate the `onParticipates...` overloads.
 
+#### Template variable interpolation
+
+Use `${name}` placeholders to insert text into the template before the query DSL is parsed. This is useful for composing template fragments, including fragments that contain DSL tokens or query-helper definitions:
+
+```java
+String queryText = "select e.* from EMPLOYEE e ${where_clause}";
+QueryTemplateConfig<Query<Employee>, EmployeeFilter> config =
+    QueryTemplateConfig.of(
+        queryText,
+        new SimpleTypeToken<Query<Employee>>(){}.getRawType(),
+        EmployeeFilter.class);
+
+config
+    .withVariable("where_clause", "[filters] [where] ${name_clause}")
+    .withVariable("name_clause", "[name][ e.name = :name]");
+```
+
+The default placeholder name accepts letters, digits, and underscores. Variable values can reference other variables; references are expanded recursively. An undefined variable logs a warning and is replaced with an empty string. A custom pattern can be set with `variableInterpolationPattern(...)`; it must define the named capture group `name`.
+
+Interpolation inserts raw text into the query template; it is not parameter binding or SQL escaping. Do not interpolate untrusted or user-provided values. Use query parameters such as `:name` and the normal mapper callbacks for data values.
+
 ### 2. Positional parameters (`?`)
 
 ```java
@@ -217,6 +238,19 @@ The runner is created from the current `QueryTemplateState` and receives these b
 - `pv` and `prpValues`: aliases for a `Map<String, Object>` of property names to their values in the filter.
 
 The engine/adapter determines how to access map entries. For example, JavaScript-like engines may support `pp.jobTitle`; plain BeanShell uses `pp{"jobTitle"}` unless adapted. Only mapped filter properties are included in these maps. Configure the runner with `evalRunnerCreator(...)` and supply the engine dependency yourself. Treat templates/expressions as trusted code; do not evaluate untrusted scripts.
+
+#### Detecting unmapped properties: `shouldEnforceValueExistenceForEval`
+Because only *mapped* properties are present in `pp`/`pv`, a typo or a forgotten mapping silently resolves to `null` (e.g. `$eval$ pv.someProperty`), evaluates to `false`, and the criterion is dropped without any error.
+
+Enable `QueryTemplateConfig.shouldEnforceValueExistenceForEval(true)` to make such mistakes fail fast: each entry in `pp`/`pv` is then wrapped in an object exposing a `value` property, so a missing property raises an exception instead of returning `null`. With this option on, expressions must read the value explicitly:
+
+```java
+config.shouldEnforceValueExistenceForEval(true);
+// $eval$ pp.someProperty         -> change to  $eval$ pp.someProperty.value
+// $eval$ pv.someProperty         -> change to  $eval$ pv.someProperty.value
+```
+
+It defaults to `false`.
 
 #### `JSR233EvalRunnerCreator`
 Reusable `Function<QueryTemplateState<?, ?>, EvalRunner>` that creates `JSR233EvalRunner` instances. It is not a singleton enforced by the class; reuse one creator when compiled-script caching is desired.

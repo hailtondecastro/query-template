@@ -484,8 +484,46 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
 	}
 	
 	@Override
+	public QueryTemplateConfig<Q, F> shouldEnforceValueExistenceForEval(boolean shouldEnforceValueExistenceForEval) {
+		this.parent.shouldEnforceValueExistenceForEval(shouldEnforceValueExistenceForEval);
+		return this;
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q, F> variableInterpolationPattern(String variableInterpolationPattern) {
+		this.parent.variableInterpolationPattern(variableInterpolationPattern);
+		return this;
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q, F> withVariable(String variableName,
+		Object value) {
+		return this.parent.withVariable(variableName, value);
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q, F> clearVariables() {
+		return this.parent.clearVariables();
+	}
+	
+	@Override
+	public Map<String, Object> variableValues() {
+		return this.parent.variableValues();
+	}
+	
+	@Override
 	public boolean isShrinkBlankLinesAfterBuild() {
 		return this.parent.isShrinkBlankLinesAfterBuild();
+	}
+	
+	@Override
+	public boolean isShouldEnforceValueExistenceForEval() {
+		return this.parent.isShouldEnforceValueExistenceForEval();
+	}
+	
+	@Override
+	public String getVariableInterpolationPattern() {
+		return this.parent.getVariableInterpolationPattern();
 	}
 	
 	@Override

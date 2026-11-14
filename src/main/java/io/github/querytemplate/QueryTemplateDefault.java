@@ -4,6 +4,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -52,6 +53,8 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
     
     private QueryTemplateInternal<Q, F> parent;
     
+    private VariableInterpolationFormat variableInterpolationFormat = null;
+    
     /**
      * TODO: Make a QueryTemplateBuilder Using the Builder Pattern to make it easier to build the object with all the parameters sharing then with QueryTemplateConfig.
      * Builds the object passing all the possible parameters.
@@ -72,7 +75,7 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
 		if (LOG.isTraceEnabled()) {
 			LOG.trace("setUp: Setting up QueryTemplateDefault with config: " + this.config);
 		}
-    	
+		this.variableInterpolationFormat = new VariableInterpolationFormat(this.config.getVariableInterpolationPattern());
     	String queryText = this.config.getQueryTextOriginal();
     	
 		this.mappersByParamNameMap = new LinkedHashMap<>();
@@ -122,6 +125,7 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
 
         Map<String, String> escapeMap = new LinkedHashMap<>();
         this.queryTextEscapedSubs = this.replaceEscapes(queryText, escapeMap);
+        this.queryTextEscapedSubs = this.variableInterpolationFormat.interpolate(this.queryTextEscapedSubs, this.config.variableValues());
 
         this.queryTextParts = pt.split(this.queryTextEscapedSubs, -1);
         
@@ -1270,12 +1274,17 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
     			LOG.debug("createEvalRunnerIfNecessary: EvalRunner is null. Creating a new EvalRunner using the provided creator function. state.getEvalRunner(): " + state.getEvalRunner());
     		}
     		EvalRunner evalRunner = this.config.getEvalRunnerCreator().apply(state);
-    		Map<String, Boolean> prpParticipations = new LinkedHashMap<>();
+    		Map<String, Object> prpParticipations = new LinkedHashMap<>();
     		Map<String, Object> prpValues = new LinkedHashMap<>();
     		for (String filterPrp : this.mappersByPropertyNameMap.keySet()) {
     			PropertyMapper<Q, F, ?> mapperItem = this.mappersByPropertyNameMap.get(filterPrp);
     			Object prpValue = PropertyUtils.getProperty(state.getFilter(), filterPrp);
-    			Boolean prpParticipation = mapperItem.getParticipatesInQuery().isParticipating(state.getFilter(), filterPrp);
+    			Object prpParticipation = mapperItem.getParticipatesInQuery().isParticipating(state.getFilter(), filterPrp);
+    			if (this.config.isShouldEnforceValueExistenceForEval() ) {
+					prpValue =  Collections.singletonMap("value", prpValue);
+					prpParticipation = Collections.singletonMap("value", prpParticipation);
+    			}
+    			
     			prpParticipations.put(filterPrp, prpParticipation);
     			prpValues.put(filterPrp, prpValue);
     		}
@@ -1404,7 +1413,8 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
 						LOG.trace("buildPropertyCriterion: REPEAT token found. Setting repeatTokenActive to true.");
 					}
                 } else if (type == QueryTemplateTokenPojo.TokenType.CRITERION
-                        || type == QueryTemplateTokenPojo.TokenType.QUERY_HELPER) {
+                        || type == QueryTemplateTokenPojo.TokenType.QUERY_HELPER
+                        || type == QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS) {
 					if (LOG.isTraceEnabled()) {
 						LOG.trace("buildPropertyCriterion: CRITERION or QUERY_HELPER token found. Ending parameter criterion processing.");
 					}
@@ -1541,6 +1551,8 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                     			criterionPrp = this.unpackArrayParamCriterionIfNecessary(filter, criterionMappers,
                     					this.queryTextTokens.get(indexOutput.getValue()).getValue(), state);
                             }
+                            
+                            propertyParticipatesOutput.setValue(true);
                         } else if (type == QueryTemplateTokenPojo.TokenType.QUERY_HELPER) {
                             if (repeatTokenActive) {
                                 throw new QueryTemplateException(String.format(
@@ -1550,21 +1562,66 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                                         this.config.getRepeatToken().toString()));
                             }
                             criterionPrp = this.buildQueryHelper(filter, this.queryTextTokens.get(indexOutput.getValue()));
+                            propertyParticipatesOutput.setValue(true);
+                        } else if (type == QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS) {
+                            if (repeatTokenActive) {
+                                throw new QueryTemplateException(String.format(
+                                        "There is a token '%3$s' before the query helper. Type='%1$s'; Value :'%2$s'.",
+                                        this.queryTextTokens.get(indexOutput.getValue()).getType(),
+                                        this.queryTextTokens.get(indexOutput.getValue()).getValue(),
+                                        this.config.getRepeatToken().toString()));
+                            }
+                        	
+                           	// TODO: AQUI
+                        	if (LOG.isTraceEnabled()) {
+                        		LOG.trace("buildPropertyCriterion: OPEN_PARENTHESIS token found. Including if current property/criterion participates in the query.");
+                        	}
+                        	OutputParam<Boolean> anyPropertyParenthesis = new OutputParam<Boolean>(false);
+                        	criterionPrp = this.buildParenthesisCriterion(indexOutput, currentConnector,
+                            		anyPropertyParenthesis, filter, state);
+                            
+							if (anyPropertyParenthesis.getValue()) {
+								propertyParticipatesOutput.setValue(true);
+								if (LOG.isTraceEnabled()) {
+									LOG.trace(
+											"buildPropertyCriterion: Parenthesis criterion has inner participating property/criterion. Setting propertyParticipatesOutput to true.");
+								}
+							} else {
+								propertyParticipatesOutput.setValue(false);
+								if (LOG.isTraceEnabled()) {
+									LOG.trace(
+											"buildPropertyCriterion: Parenthesis criterion has NO inner participating property/criterion. Setting propertyParticipatesOutput to false.");
+								}
+							}
                         } else {
                             throw new QueryTemplateException(
                                     this.tokenExceptionMessage(indexOutput.getValue(), this.queryTextTokens, "UNEXPECTED TOKEN"));
                         }
 
-                        queryTextMod.append(currentConnector).append(criterionPrp).append(" ");
-                        propertyParticipatesOutput.setValue(true);
-                        // Mistake: This has no effect, because the currentConnector is not used anymore after this point, `break` is used just after this point. The currentConnector is used only in the next iteration of the loop, but the loop will break immediately after this point, so the currentConnector is not used anymore.  
-                        //currentConnector = " "+this.config.getTargetReservedWordAnd()+" ";
-                        
+                        if (propertyParticipatesOutput.getValue()) {
+                        	if (type != QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS) {
+                        		queryTextMod.append(currentConnector);	
+                        	}
+                    		queryTextMod.append(criterionPrp).append(" ");                        		
+                        	// Mistake: This has no effect, because the currentConnector is not used anymore after this point, `break` is used just after this point. The currentConnector is used only in the next iteration of the loop, but the loop will break immediately after this point, so the currentConnector is not used anymore.  
+                        	//currentConnector = " "+this.config.getTargetReservedWordAnd()+" ";
+                        }
                     } else {
 						if (LOG.isTraceEnabled()) {
 							LOG.trace(
 									"buildPropertyCriterion: No participating properties found for filter properties: "
 											+ filterPrpsStr + ". Not appending any criterion to queryTextMod.");
+						}
+						if (type == QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS) {
+                        	OutputParam<Boolean> anyPropertyParenthesis = new OutputParam<Boolean>(false);
+                        	String dummyParenthesisCriterion = this.buildParenthesisCriterion(indexOutput, currentConnector,
+                            		anyPropertyParenthesis, filter, state);
+							if (!anyPropertyParenthesis.getValue()) {
+								if (LOG.isTraceEnabled()) {
+									LOG.trace(
+											"buildPropertyCriterion: Dummy Parenthesis assembled just to move the indexOutput forward after closing parenthesis.");
+								}
+							}
 						}
                     }
 
@@ -1638,7 +1695,7 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                     }
                 } else if (type == QueryTemplateTokenPojo.TokenType.OR) {
                     if (anyPropertyParenthesisOutput.getValue()) {
-                        innerParenthesisConnector = " "+this.config.getTargetReservedWordAnd()+" ";
+                        innerParenthesisConnector = " "+this.config.getTargetReservedWordOr()+" ";
                         if (LOG.isTraceEnabled()) {
 							LOG.trace(
 									"buildParenthesisCriterion: OR token found. Setting innerParenthesisConnector to OR because there is some property/criterion participating in the parenthesis.");

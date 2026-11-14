@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -67,6 +68,9 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     private Class<F> filterClass;
     private boolean removeComments = false;
     private boolean shrinkBlankLinesAfterBuild = false;
+    private boolean shouldEnforceValueExistenceForEval = false;
+    private Pattern variableInterpolationPattern = Pattern.compile(QueryTemplateConfig.VARIABLE_INTERPOLATION_PATTERN);
+    private Map<String, Object> variableInterpolationValues = new LinkedHashMap<>();    
     
 	QueryTemplateConfigRoot(String queryText, Class<F> filterClass) {
 		this.filterClass = filterClass;
@@ -389,6 +393,36 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
 	}
 	
 	@Override
+	public QueryTemplateConfig<Q, F> shouldEnforceValueExistenceForEval(boolean shouldEnforceValueExistenceForEval) {
+		this.shouldEnforceValueExistenceForEval = shouldEnforceValueExistenceForEval;
+		return this;
+	}
+	
+	@Override
+	public QueryTemplateConfig<Q, F> variableInterpolationPattern(String variableInterpolationPattern) {
+		this.variableInterpolationPattern = Pattern.compile(variableInterpolationPattern);
+		return this;
+	}
+	
+	@Override
+	public Map<String, Object> variableValues() {
+        return Collections.unmodifiableMap(this.variableInterpolationValues);
+    }
+	
+	@Override
+	public QueryTemplateConfig<Q, F> withVariable(String variableName, Object value) {
+		Objects.requireNonNull(value, "Variable value must not be null: " + variableName);
+        this.variableInterpolationValues.put(variableName, value);
+        return this;
+    }
+	
+	@Override
+	public QueryTemplateConfig<Q, F> clearVariables() {
+        this.variableInterpolationValues.clear();
+        return this;
+    }
+	
+	@Override
 	public Pattern getFiltersToken() {
 		return filtersToken;
 	}
@@ -566,6 +600,16 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
 	@Override
 	public boolean isShrinkBlankLinesAfterBuild() {
 		return shrinkBlankLinesAfterBuild;
+	}
+	
+	@Override
+	public boolean isShouldEnforceValueExistenceForEval() {
+		return shouldEnforceValueExistenceForEval;
+	}
+	
+	@Override
+	public String getVariableInterpolationPattern() {
+		return variableInterpolationPattern.pattern();
 	}
 	
 	@Override

@@ -92,6 +92,12 @@ public interface QueryTemplateConfig<Q, F> {
 	 * Value: <code>"\\b([\\w-]+)\\b"</code>. 
 	 */
 	String PARAMETER_NAME_PATTERN = "\\b([\\w-]+)\\b";
+	
+	/**
+	 * Default regular expression for variable placeholders in query text. The
+	 * pattern recognizes {@code ${name}} and captures the name in group {@code name}.
+	 */
+	String VARIABLE_INTERPOLATION_PATTERN = VariableInterpolationFormat.DEFAULT_REGEX;
 	/**
 	 * Escape character. Used when a native character of the query conflicts with the
 	 * delimiters of the substitution grammar of this class. OBS: It must be in
@@ -572,6 +578,68 @@ public interface QueryTemplateConfig<Q, F> {
 	QueryTemplateConfig<Q, F> shrinkBlankLinesAfterBuild(boolean shrinkBlankLinesAfterBuild);
 	
 	/**
+	 * Sets whether to enforce value existence for eval expressions.<br>
+	 * When {@code true}, the bound variables {@code prpParticipations}, {@code pp},
+	 * {@code prpValues} and {@code pv} do not hold direct references to the values,
+	 * but objects exposing a {@code value} property.<br>
+	 * This helps detect properties left unmapped by mistake. For example, if a
+	 * property {@code someProperty} was not mapped by error and is used in an eval
+	 * expression such as {@code $eval$ prpValues.someProperty}, it would always
+	 * return {@code null}, the expression would evaluate to {@code false}, and the
+	 * criterion would be silently left out of the query.<br>
+	 * With this option enabled, accessing the {@code value} property of a
+	 * non-existent entry raises an exception, allowing the mapping error to be
+	 * fixed.<br>
+	 * When enabled, {@code $eval$ pp.someProperty} must be changed to
+	 * {@code $eval$ pp.someProperty.value}.<br>
+	 *
+	 * @param shouldEnforceValueExistenceForEval whether to wrap eval bindings so
+	 *            that a missing value raises an exception instead of silently
+	 *            resolving to {@code null}.
+	 * @return this instance for method chaining.
+	 */
+	QueryTemplateConfig<Q, F> shouldEnforceValueExistenceForEval(boolean shouldEnforceValueExistenceForEval);
+	
+	/**
+	 * Sets the pattern used for variable interpolation. Default is
+	 * {@link VariableInterpolationFormat#DEFAULT_REGEX}.
+	 * 
+	 * @param variableInterpolationPattern the pattern used for variable
+	 *                                     interpolation.
+	 * @return This instance for method chaining.
+	 */
+	QueryTemplateConfig<Q, F> variableInterpolationPattern(String variableInterpolationPattern);
+	
+	/**
+	 * Gets the variable values map. The key is the variable name, and the value is
+	 * the variable value.
+	 * 
+	 * @return the variable values map.
+	 */
+	Map<String, Object> variableValues();
+
+	/**
+	 * Sets a non-null variable value for the specified variable name.<br>
+	 * This interpolation mechanism replaces placeholders in the query text before
+	 * parsing, so variables can be used anywhere in the text, including query-helper
+	 * definitions. Variable values can reference other variables and are resolved
+	 * recursively. Values are inserted as raw template text, so do not use this method
+	 * for untrusted data or as a substitute for query parameter binding.<br>
+	 * 
+	 * @param variableName the variable name.
+	 * @param value        the non-null variable value.
+	 * @return This instance for method chaining.
+	 */
+	QueryTemplateConfig<Q, F> withVariable(String variableName,
+		Object value);
+
+	/**
+	 * Clears all variable values from the configuration.
+	 * @return this instance for method chaining.
+	 */
+	QueryTemplateConfig<Q, F> clearVariables();
+	
+	/**
 	 * Gets the parent configuration after defining a QueryHelper. If this is the root configuration, returns null.
 	 * 
 	 * @return Return for the parent config after define QueryHelper. If this is the root config, return null.
@@ -839,6 +907,22 @@ public interface QueryTemplateConfig<Q, F> {
 	 * @return whether to shrink blank lines after building the query.
 	 */
 	boolean isShrinkBlankLinesAfterBuild();
+	
+	/**
+	 * Gets whether to enforce value existence for evaluation. See
+	 * {@link #shouldEnforceValueExistenceForEval(boolean)} for more information.
+	 * 
+	 * @return whether to enforce value existence for evaluation.
+	 */
+	boolean isShouldEnforceValueExistenceForEval();
+	
+	/**
+	 * Gets the pattern used for variable interpolation. See
+	 * {@link #variableInterpolationPattern(String)} for more information.
+	 * 
+	 * @return the pattern used for variable interpolation.
+	 */
+	String getVariableInterpolationPattern();
 	
 	/**
 	 * Creates a new instance of QueryTemplateConfig with the specified query text and query class.

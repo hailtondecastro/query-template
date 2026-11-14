@@ -690,7 +690,8 @@ public class QueryTemplateTest {
     
     public void buildQueryWithParenthesisBase(
     	Function<String, String> replacer,
-    	Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger) {
+    	Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, 
+    	QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger) {
     	
         String query = BUILD_QUERY_WITH_PARENTHESIS;
 
@@ -723,7 +724,7 @@ public class QueryTemplateTest {
         LOG.debug("Result:\n" + state.getQueryString());
         LOG.debug("Compact result:\n" + stateCompact.getQueryString());
         
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*empl.att1 = :filterPrp1.*")));
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*empl.att1 = :filterPrp1.*[REPLACE_MARKER_FP1]?")));
         assertThat(state.getQueryString(), not(matchesPattern(replacer.apply("(?s).*and\\s*\\(\\s*empl.att2 > :filterPrp2\\s*and\\s*empl.att2 > :filterPrp2\\s*\\).*"))));
         assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*or\\s*empl.att1 = :filterPrp1.*")));
         // The repeat token unfolds filterPrp7/filterPrp8 into indexed parameters.
@@ -753,7 +754,7 @@ public class QueryTemplateTest {
         
         state = qt.buildQueryState(mf);
         
-        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*empl.att1 = :filterPrp1.*")));
+        assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*empl.att1 = :filterPrp1.*[REPLACE_MARKER_FP1_B]?")));
         assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*or\\s*empl.att1 = :filterPrp1.*")));
         assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*and\\s*/\\*filterPrp2\\*/ empl\\.att2 > :filterPrp2.*")));
         // The repeat token unfolds filterPrp7/filterPrp8 into indexed parameters.
@@ -800,6 +801,111 @@ public class QueryTemplateTest {
     public void buildQueryWithParenthesis() {
 		this.buildQueryWithParenthesisBase(
 				Function.identity(), 
+				Function.identity()
+		);
+    }
+    
+    @Test
+    public void buildQueryWithParenthesisIfParticipates() {
+		this.buildQueryWithParenthesisBase(
+				s -> s
+					.replace(
+				            "     [filterPrp1][ empl.att1 = :filterPrp1] \n" +
+				            "     [filterPrp2][ /*filterPrp2*/ empl.att2 > :filterPrp2] \n",
+				            "     [filterPrp1][(] \n" + 
+				            "       [filterPrp1][ empl.att1 = :filterPrp1] \n" +
+				            "       [filterPrp2][ /*filterPrp2*/ empl.att2 > :filterPrp2] \n" +
+				            "     [)] \n"				            
+					)
+					.replace("(?s).*where\\s*empl.att1 = :filterPrp1.*[REPLACE_MARKER_FP1]?",
+							"(?s).*where\\s*\\(\\s*empl.att1 = :filterPrp1\\s*\\)\\s*.*")
+					.replace("(?s).*where\\s*empl.att1 = :filterPrp1.*[REPLACE_MARKER_FP1_B]?",
+							"(?s).*\\(\\s*empl.att1 = :filterPrp1\\s*and\\s*/\\*filterPrp2\\*/ empl.att2 > :filterPrp2\\s*\\).*"),
+				Function.identity()
+		);
+    } 
+    
+    @Test
+    public void buildQueryWithParenthesisInterpolationVariable() {
+		this.buildQueryWithParenthesisBase(
+				s -> {
+					String result = s;
+					if (s.startsWith("select empl.att1 as")) {
+						result = result
+								.replaceAll(
+										"(?s)\\s*\\[where\\].*empl.att4 = 'foo'.*$",
+										"\n   \\$\\{where_var\\}"		            
+										);
+						assertThat(result, containsString("${where_var}"));
+					}					
+					return result;
+				},
+				config -> {					
+					return config
+							.withVariable("where_var",
+						            "[where] \n" +
+									"     ${conjunction_a_var} \n" +
+									"     ${conjunction_b_var} \n" +
+						            "     ${disjunction_a_var} \n" +
+						            "     ${disjunction_b_var} \n" +
+						            "     ${conjunction_c_var} \n" +
+						            "     ${conjunction_extra_var}")
+							.withVariable("conjunction_a_var",
+									"[filterPrp1][ ${filterPrp1_var}]")
+							.withVariable("filterPrp1_var",
+									"empl.att1 = :filterPrp1")
+							.withVariable("conjunction_b_var",
+									"[filterPrp2][ ${filterPrp2_a_var}]")
+							.withVariable("filterPrp2_a_var",
+									"/*filterPrp2*/ empl.att2 > :filterPrp2")
+							.withVariable("disjunction_a_var",
+				                    "[or][(] \n" +
+				                    "       [filterPrp2][and][ ${filterPrp2_b_var}] \n" +
+				                    "       [filterPrp2][and][ ${filterPrp2_b_var}] \n" +
+				                    "     [)]")
+							.withVariable("filterPrp2_b_var",
+									"empl.att2 > :filterPrp2")
+							.withVariable("disjunction_b_var",
+									"[filterPrp1][or][ ${filterPrp1_var}]")
+							.withVariable("conjunction_c_var",
+				                    "     [(] \n" +
+				                    "       [and][(] \n" +
+				                    "         [filterPrp7,filterPrp8][repeat][or][ ${filterPrp7_filterPrp7_var}] \n" +
+				                    "       [)] \n" +
+				                    "     [)]")
+							.withVariable("filterPrp7_filterPrp7_var",
+									"(empl.att7 = :filterPrp7 and empl.att8 = :filterPrp8)")
+							.withVariable("conjunction_extra_var",
+									"[extra][empl.att4 = 'foo']");
+				}
+		);
+    }
+
+	@Test
+	public void withVariableRejectsNullValue() {
+		QueryTemplateConfig<Query<MyEntity>, MyFilter> config = QueryTemplateConfig.of(
+				"", new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
+
+		NullPointerException exception = assertThrows(
+				NullPointerException.class,
+				() -> config.withVariable("missing", null));
+		assertThat(exception.getMessage(), containsString("Variable value must not be null: missing"));
+	}
+    
+    @Test
+    public void buildQueryWithParenthesisOrInnerParenthesis() {
+		this.buildQueryWithParenthesisBase(
+				s -> s
+					.replace(
+			            "       [and][(] \n" +
+			            "         [filterPrp7,filterPrp8][repeat][or][ (empl.att7 = :filterPrp7 and empl.att8 = :filterPrp8)] \n",
+			            "       [filterPrp7][ empl.att7 is not null] \n" +
+			            "       [or][(] \n" +
+			            "         [filterPrp7,filterPrp8][repeat][or][ (empl.att7 = :filterPrp7 and empl.att8 = :filterPrp8)] \n"
+					)
+					.replace(
+						"(?s).*and\\s*\\(\\s*\\(\\s*\\(empl\\.att7 = :filterPrp7_0",
+						"(?s).*and\\s*\\(\\s*empl.att7 is not null\\s*or\\s*\\(\\s*\\(empl\\.att7 = :filterPrp7_0"),
 				Function.identity()
 		);
     }
@@ -1327,7 +1433,7 @@ public class QueryTemplateTest {
     
     public void buildQueryWithEval(
     	Function<QueryTemplateState<?, ?>, EvalRunner> evalRunnerCreator,
-    	Function<String, String> replacer) {
+    	Function<String, String> replacer, Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger) {
 //    	    	
     	String query = BUILD_QUERY_WITH_EVAL_QUERY;
     	
@@ -1348,6 +1454,8 @@ public class QueryTemplateTest {
         this.configPropertyMappers(queryTemplateConfig);
         
         queryTemplateConfig.evalRunnerCreator(evalRunnerCreator);
+        
+        queryTemplateConfig = configChanger.apply(queryTemplateConfig);
         
         QueryTemplate<Query<MyEntity>, MyFilter> qt = QueryTemplate.of(queryTemplateConfig);
         QueryTemplateState<Query<MyEntity>, MyFilter> state = qt.buildQueryState(mf);
@@ -1444,14 +1552,29 @@ public class QueryTemplateTest {
     public void buildQueryWithEvalNashornCompiled() {
     	this.buildQueryWithEval(
     			this.nashornEvalRunnerCreatorCompiled,
+    			Function.identity(), 
     			Function.identity()
     			);
+    }
+    
+    @Test
+    public void buildQueryWithEvalNashornCompiledEnforceValueExistence() {
+    	this.buildQueryWithEval(
+    			this.nashornEvalRunnerCreatorCompiled,
+    			s -> s
+    				.replaceAll("(pp\\.\\b\\w+\\b)", "$1.value")
+    				.replaceAll("(pp\\\\\\.\\b\\w+\\b)", "$1\\\\.value"),
+				config -> {
+					config.shouldEnforceValueExistenceForEval(true);
+					return config;
+				});
     }
     
     @Test
     public void buildQueryWithEvalNashornInterpreted() {
     	this.buildQueryWithEval(
     			this.nashornEvalRunnerCreatorInterpreted,
+    			Function.identity(),
     			Function.identity()
     			);
     }
@@ -1496,14 +1619,16 @@ public class QueryTemplateTest {
 							.replaceAll("pp\\.(\\b\\w*\\b)", "pp{\"$1\"}")
 							.replaceAll("pp\\\\\\.(\\b\\w*\\b)", "pp\\\\{\"$1\"\\\\}");
 					return result;
-				});
+				}, 
+				Function.identity());
     }
 
     @Test
     public void buildQueryWithEvalBeanShellAdapted() {
     	this.buildQueryWithEval(
     			state -> new AdaptedBeanShellEvalRunner(),
-				(s) -> s);
+				(s) -> s,
+				Function.identity());
 	}
 
     public void buildQueryWithEvalGroovy(Function<QueryTemplateState<?, ?>, EvalRunner> evalRunnerCreator) {
@@ -1521,6 +1646,7 @@ public class QueryTemplateTest {
     	
 		this.buildQueryWithEval(
 				evalRunnerCreator,
+				Function.identity(),
 				Function.identity());
     }
     
