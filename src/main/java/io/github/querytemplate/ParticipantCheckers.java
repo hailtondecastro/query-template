@@ -2,6 +2,7 @@ package io.github.querytemplate;
 
 import java.lang.reflect.Array;
 import java.util.Collection;
+import java.util.function.BiFunction;
 
 /**
  * List of the most common {@link ParticipatesInQuery}s.
@@ -14,7 +15,7 @@ public class ParticipantCheckers {
     /**
      * Participates if: value != null.
      */
-    public static final ParticipatesInQuery NOTNULL =
+    public static final BiFunction<Object, String, Boolean> NOTNULL =
         (filter, filterPrp) -> {
             try {
                 return PropertyUtils.getProperty(filter, filterPrp) != null;
@@ -26,7 +27,7 @@ public class ParticipantCheckers {
     /**
      * Participates if: value != null AND value != 0.
      */
-    public static final ParticipatesInQuery NUMBER_NOTZERO =
+    public static final BiFunction<Object, String, Boolean> NUMBER_NOTZERO =
         (filter, filterPrp) -> {
             try {
                 Object n = PropertyUtils.getProperty(filter, filterPrp);
@@ -44,7 +45,7 @@ public class ParticipantCheckers {
      * Used when the evaluation is only meant to decide whether to include a piece
      * of Query, but there is no parameter value to be assigned.
      */
-    public static final ParticipatesInQuery FRAGMENT_INCLUSION =
+    public static final BiFunction<Object, String, Boolean> FRAGMENT_INCLUSION =
         (filter, filterPrp) -> {
             try {
                 FragmentInclusion fragmentInclusion = (FragmentInclusion) PropertyUtils.getProperty(filter, filterPrp);
@@ -57,7 +58,7 @@ public class ParticipantCheckers {
     /**
      * Participates if: value != null AND value.toString().length() != 0.
      */
-    public static final ParticipatesInQuery STRING_NOTEMPTY =
+    public static final BiFunction<Object, String, Boolean> STRING_NOTEMPTY =
         (filter, filterPrp) -> {
             try {
                 Object o = PropertyUtils.getProperty(filter, filterPrp);
@@ -74,7 +75,7 @@ public class ParticipantCheckers {
     /**
      * Participates if: value != null AND ((Collection) value).size() &gt; 0.
      */
-    public static final ParticipatesInQuery COLLECTION_NOTEMPTY =
+    public static final BiFunction<Object, String, Boolean> COLLECTION_NOTEMPTY =
         (filter, filterPrp) -> {
             try {
                 Collection<?> clObj = (Collection<?>) PropertyUtils.getProperty(filter, filterPrp);
@@ -91,7 +92,7 @@ public class ParticipantCheckers {
     /**
      * Participates if: value != null AND java.lang.reflect.Array.getLength(value) &gt; 0.
      */
-    public static final ParticipatesInQuery ARRAY_NOTEMPTY =
+    public static final BiFunction<Object, String, Boolean> ARRAY_NOTEMPTY =
         (filter, filterPrp) -> {
             try {
                 Object objs = PropertyUtils.getProperty(filter, filterPrp);
@@ -105,7 +106,7 @@ public class ParticipantCheckers {
             }
         };
         
-	public static final ParticipatesInQuery BOOLEAN_TRUE = (filter,
+	public static final BiFunction<Object, String, Boolean> BOOLEAN_TRUE = (filter,
 		filterPrp) -> {
 		try {
 			Boolean b = (Boolean) PropertyUtils.getProperty(filter, filterPrp);

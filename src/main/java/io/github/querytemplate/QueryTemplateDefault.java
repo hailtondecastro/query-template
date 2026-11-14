@@ -177,7 +177,7 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
     
     private String removeComments(String queryText) {
     	String blockCommentPatternStr = "(?s)/\\*[\\s\\S]*?\\*/";
-    	String commentPatternStr = "(?m)^\\s*--.*$";
+    	String commentPatternStr = "(?m)--.*$";
     	
     	String compacted = queryText;
 
@@ -1763,26 +1763,59 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
 			}
             if (this.config.getFiltersToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.FILTERS, tokenStr, start));
+                if (LOG.isTraceEnabled()) {
+                	LOG.trace("buildTokens: Token matches FILTERS token pattern.");
+                }
             } else if (this.config.getWhereToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.WHERE, tokenStr, start));
-            } else if (this.config.getAndToken().matcher(tokenStr).find()) {
+                if (LOG.isTraceEnabled()) {
+                	LOG.trace("buildTokens: Token matches WHERE token pattern.");
+                }
+            } else if (this.config.getAndToken().matcher(tokenStr).find()) {            	
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.AND, tokenStr, start));
+				if (LOG.isTraceEnabled()) {
+					LOG.trace("buildTokens: Token matches AND token pattern.");
+				}
             } else if (this.config.getOrToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.OR, tokenStr, start));
+				if (LOG.isTraceEnabled()) {
+					LOG.trace("buildTokens: Token matches OR token pattern.");
+				}
             } else if (this.config.getNoOperatorToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.NO_OPERATOR, tokenStr, start));
+				if (LOG.isTraceEnabled()) {
+					LOG.trace("buildTokens: Token matches NO_OPERATOR token pattern.");
+				}
             } else if (this.config.getRepeatToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.REPEAT, tokenStr, start));
+				if (LOG.isTraceEnabled()) {
+					LOG.trace("buildTokens: Token matches REPEAT token pattern.");
+				}
             } else if (this.config.getOpenParenthesisToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS, tokenStr, start));
+				if (LOG.isTraceEnabled()) {
+					LOG.trace("buildTokens: Token matches OPEN_PARENTHESIS token pattern.");
+				}
             } else if (this.config.getCloseParenthesisToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.CLOSE_PARENTHESIS, tokenStr, start));
+				if (LOG.isTraceEnabled()) {
+					LOG.trace("buildTokens: Token matches CLOSE_PARENTHESIS token pattern.");
+				}
             } else if (this.config.getExtraToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.EXTRA, tokenStr, start));
+				if (LOG.isTraceEnabled()) {
+					LOG.trace("buildTokens: Token matches EXTRA token pattern.");
+				}
             } else if (this.config.getQueryHelperToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.QUERY_HELPER,
                         this.config.getPropertiesDelimiterToken().matcher(tokenStr).replaceAll(""), start));
+				if (LOG.isTraceEnabled()) {
+					LOG.trace("buildTokens: Token matches QUERY_HELPER token pattern.");
+				}
             } else if (this.config.getPropertiesToken().matcher(tokenStr).find()) {
+                if (LOG.isTraceEnabled()) {
+                	LOG.trace("buildTokens: Token matches PROPERTIES token pattern. Extracting property names and validating existence of corresponding mappers.");
+                }
                 QueryTemplateTokenPojo token = new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.PARAMETER,
                         this.config.getPropertiesDelimiterToken().matcher(tokenStr).replaceAll(""), start);
                 tokens.add(token);
@@ -1824,6 +1857,9 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
             } else if (this.config.getCriterionToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.CRITERION,
                         this.config.getCriterionDelimiterToken().matcher(tokenStr).replaceAll(""), start));
+				if (LOG.isTraceEnabled()) {
+					LOG.trace("buildTokens: Token matches CRITERION token pattern.");
+				}
             } else {
                 throw new QueryTemplateException("Unexpected token: '" + tokenStr + "'");
             }

@@ -3,6 +3,8 @@ package io.github.querytemplate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 class PropertyMapperConfigDefault<Q, F, P, I> implements PropertyMapperConfigInternal<Q, F, P, I>, PropertyMapperConfig<Q, F, P, I> {
 	QueryTemplateConfig<Q, F> queryTemplateConfig;
@@ -24,7 +26,7 @@ class PropertyMapperConfigDefault<Q, F, P, I> implements PropertyMapperConfigInt
     //private String parameterName;
     //Not used
     //private String entityPrp;
-    private ParticipatesInQuery participatesInQuery;
+    private ParticipatesInQuery<F> participatesInQuery;
     //private Type type = null;
     private AssignNamedParameter<Q, P> onParticipatesNamed = null;
     private AssignPositionalParameter<Q, P> onParticipatesPositional = null;
@@ -47,9 +49,22 @@ class PropertyMapperConfigDefault<Q, F, P, I> implements PropertyMapperConfigInt
 //	}
 	
 	@Override
-	public PropertyMapperConfig<Q, F, P, I> participatesInQuery(ParticipatesInQuery participatesInQuery) {
-		this.participatesInQuery = participatesInQuery;
+	public PropertyMapperConfig<Q, F, P, I> participatesInQueryTyped(ParticipatesInQuery<F> participatesInQuery) {
+		this.participatesInQuery = (ParticipatesInQuery<F>) participatesInQuery;
 		return this;
+	}
+	
+	@Override
+	public PropertyMapperConfig<Q, F, P, I> participatesInQuery(BiFunction<Object, String, Boolean> funcParticipatesInQuery) {
+		if (funcParticipatesInQuery == null) {
+			return this.participatesInQueryTyped((ParticipatesInQuery<F>)null);	
+		} else {
+			return this.participatesInQueryTyped((ParticipatesInQuery<F>)
+					(F filter, String filterPrp) -> {
+						return funcParticipatesInQuery.apply(filter, filterPrp);
+					}
+			);			
+		}
 	}
 	
 	@Override

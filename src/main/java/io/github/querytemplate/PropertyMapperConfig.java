@@ -1,6 +1,8 @@
 package io.github.querytemplate;
 
 import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * Configuration class for a property mapper. It allows to set the filter property, participates-in-query verifier, 
@@ -98,16 +100,27 @@ public interface PropertyMapperConfig<Q, F, P, I> {
 	Map<String, ParameterMapperConfig<Q, F, P, I>> getParameterMappers();
 	
 	/**
-	 * Sets the participates-in-query verifier for the property mapper.
+	 * Sets the participates-in-query verifier for the property mapper.<br>
+	 * Best for using with lambda expressions.<br>
 	 * 
 	 * @param participatesInQuery the participates-in-query verifier.
 	 * @return this instance for method chaining.
 	 */
-	PropertyMapperConfig<Q, F, P, I> participatesInQuery(ParticipatesInQuery participatesInQuery);
+	PropertyMapperConfig<Q, F, P, I> participatesInQueryTyped(ParticipatesInQuery<F> participatesInQuery);
+	
+	/**
+	 * Sets the participates-in-query verifier for the property mapper.<br>
+	 * Best for using with {@link ParticipantCheckers} utility class.<br>
+	 * 
+	 * @param participatesInQuery
+	 * @return
+	 */
+	PropertyMapperConfig<Q, F, P, I> participatesInQuery(BiFunction<Object, String, Boolean> participatesInQuery);
 
 	/**
 	 * Sets the named parameter callback for the property mapper.
-	 * This will be called when the property is participating in the query for all parameters that is used in the query.
+	 * Best for using with lambda expressions.<br>
+	 * 
 	 * @param onParticipatesNamed the named parameter callback.
 	 * @return this instance for method chaining.
 	 */

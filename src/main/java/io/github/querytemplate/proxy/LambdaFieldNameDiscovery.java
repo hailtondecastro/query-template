@@ -1,6 +1,7 @@
 package io.github.querytemplate.proxy;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -183,10 +184,20 @@ public class LambdaFieldNameDiscovery {
                             || hasParameterlessPublicConstructor(
                                     thisMethod.getReturnType()))) {
                 return getProxyInstance(this.proxyFactory, thisMethod.getReturnType());
-            }
-            
-            return null;
+			} else {
+				if (proceed.getReturnType().isPrimitive()) {
+					return getDefaultValue(proceed.getReturnType());
+				} else {
+					return null;
+				}
+			}
         }
+    }
+    
+    @SuppressWarnings("unchecked")
+    private static <T> T getDefaultValue(Class<T> clazz) {
+        // Ref.: [java - Getting default value for primitive types - Stack Overflow](https://stackoverflow.com/a/38243203/1350308)
+        return (T) Array.get(Array.newInstance(clazz, 1), 0);
     }
     
     private static boolean hasParameterlessPublicConstructor(Class<?> clazz) {

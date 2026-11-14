@@ -41,6 +41,7 @@ public class MyFilter {
     private Integer[] filterPrp8;
     private FormalName formalName;
     private FormalName[] formalNamesArr;
+    private boolean primitiveBoolPrp = false;    
 
 	public MyFilter() {
         super();
@@ -154,13 +155,21 @@ public class MyFilter {
 	public void setFormalName(FormalName formalName) {
 		this.formalName = formalName;
 	}
-
+	
 	public FormalName[] getFormalNamesArr() {
 		return formalNamesArr;
 	}
-
+	
 	public void setFormalNamesArr(FormalName[] formalNamesArr) {
 		this.formalNamesArr = formalNamesArr;
+	}
+
+	public boolean isPrimitiveBoolPrp() {
+		return primitiveBoolPrp;
+	}
+
+	public void setPrimitiveBoolPrp(boolean primitiveBoolPrp) {
+		this.primitiveBoolPrp = primitiveBoolPrp;
 	}
 
 	public boolean isFilterPrp1AndfilterPrp2() {

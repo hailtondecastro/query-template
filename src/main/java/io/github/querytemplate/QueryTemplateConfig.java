@@ -71,10 +71,10 @@ public interface QueryTemplateConfig<Q, F> {
 	 * comma, surrounded by the parameter delimiters. All the properties must be
 	 * participating in the query (or not participating if preceded by "!")
 	 * for the criterion to be included.<br>
-	 * Value: <code>"(\\[(!?\\s*\\b[\\w-]+\\b\\s*,?\\s*){1,300}\\])|(\\[\\s{0,300}%s[^\\]]{0,300}\\])|(\\[\\s{0,300}%s[^\\]]{0,300}\\])"</code>.<br>
+	 * Value: <code>"(\\[\\s*!?\\b[\\w-]+\\b(\\s*,\\s*!?\\b[\\w-]+\\b){0,300}\\s*\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])"</code>.<br>
 	 * The value of {@link #getPropertiesToken()} is <code>Pattern.compile(String.format(QueryTemplateConfig.PROPERTIES_TOKEN, this.getReservedAnyProperty(), this.getReservedEvalProperty()))</code> 
 	 */
-	String PROPERTIES_TOKEN = "(\\[(!?\\s*\\b[\\w-]+\\b\\s*,?\\s*){1,300}\\])|(\\[\\s{0,300}%s[^\\]]{0,300}\\])|(\\[\\s{0,300}%s[^\\]]{0,300}\\])";
+	String PROPERTIES_TOKEN = "(\\[\\s*!?\\b[\\w-]+\\b(\\s*,\\s*!?\\b[\\w-]+\\b){0,300}\\s*\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])";
 	
 	/** Repeats the sentence once for each element in the array. */
 	String REPEAT_TOKEN = "\\[repeat\\]";
