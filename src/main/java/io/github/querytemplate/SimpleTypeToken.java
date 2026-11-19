@@ -26,13 +26,13 @@ public abstract class SimpleTypeToken<T> {
         return this.type;
     }
     
-	public Class<T> getRawType() {
-		if (type instanceof Class<?>) {
-			return (Class<T>) type;
-		} else if (type instanceof ParameterizedType) {
-			return (Class<T>) ((ParameterizedType) type).getRawType();
-		} else {
-			throw new IllegalStateException("Type is neither a Class nor a ParameterizedType");
-		}
-	}
+    public Class<T> getRawType() {
+        if (type instanceof Class<?>) {
+            return (Class<T>) type;
+        } else if (type instanceof ParameterizedType) {
+            return (Class<T>) ((ParameterizedType) type).getRawType();
+        } else {
+            throw new IllegalStateException("Type is neither a Class nor a ParameterizedType");
+        }
+    }
 }

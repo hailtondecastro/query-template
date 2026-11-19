@@ -25,7 +25,7 @@ public class QueryMock<E> implements InvocationHandler {
     private final Query<E> proxy;
 
     @SuppressWarnings("unchecked")
-	public QueryMock() {
+    public QueryMock() {
         this.proxy = (Query<E>) Proxy.newProxyInstance(
                 QueryMock.class.getClassLoader(),
                 new Class<?>[] { Query.class },

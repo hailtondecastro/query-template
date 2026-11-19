@@ -8,8 +8,8 @@ package io.github.querytemplate.proxy;
  */
 @SuppressWarnings("rawtypes")
 public interface ProxyFactory {
-	void setSuperclass(Class clazz);
-	void setInterfaces(Class[] ifs);
-	Object create(Class[] paramTypes, Object[] args, MethodHandler mh) throws Throwable;
-	void setFilter(MethodFilter mf);
+    void setSuperclass(Class clazz);
+    void setInterfaces(Class[] ifs);
+    Object create(Class[] paramTypes, Object[] args, MethodHandler mh) throws Throwable;
+    void setFilter(MethodFilter mf);
 }

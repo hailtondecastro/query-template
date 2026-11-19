@@ -15,8 +15,8 @@ import org.slf4j.LoggerFactory;
  * recursively up to a specified maximum depth.
  */
 public class VariableInterpolationFormat {
-	private static final Logger LOG = LoggerFactory.getLogger(VariableInterpolationFormat.class);	
-	
+    private static final Logger LOG = LoggerFactory.getLogger(VariableInterpolationFormat.class);    
+    
     /**
      * Default regex for placeholders in the form {@code ${name}}. The variable
      * name is captured in the named group {@code name}.
@@ -26,7 +26,7 @@ public class VariableInterpolationFormat {
 
     private Pattern placeholderPattern;
 
-	private int maxDepth;
+    private int maxDepth;
 
     public VariableInterpolationFormat() {
         this(Pattern.compile(DEFAULT_REGEX), 10);
@@ -37,23 +37,23 @@ public class VariableInterpolationFormat {
     }
     public VariableInterpolationFormat(Pattern placeholderPattern, int maxDepth) {
         this.maxDepth = maxDepth;
-		this.placeholderPattern = Objects.requireNonNull(placeholderPattern, "Pattern can not be null.");
+        this.placeholderPattern = Objects.requireNonNull(placeholderPattern, "Pattern can not be null.");
     }
 
-	/**
-	 * Interpolates the given template string by replacing placeholders with
-	 * corresponding values from the provided map. The interpolation is performed
-	 * recursively up to a maximum depth of 10.
-	 *
-	 * @param template the template string containing placeholders
-	 * @param params   a map containing variable names and their corresponding
-	 *                 values
-	 * @return the interpolated string with placeholders replaced by their values
-	 */
-	public String interpolate(String template,
-		Map<String, Object> params) {
-		return inerpolateRecursive(template, params, 0);
-	}
+    /**
+     * Interpolates the given template string by replacing placeholders with
+     * corresponding values from the provided map. The interpolation is performed
+     * recursively up to a maximum depth of 10.
+     *
+     * @param template the template string containing placeholders
+     * @param params   a map containing variable names and their corresponding
+     *                 values
+     * @return the interpolated string with placeholders replaced by their values
+     */
+    public String interpolate(String template,
+        Map<String, Object> params) {
+        return inerpolateRecursive(template, params, 0);
+    }
     
     private String interpolateNonRecursive(String template, Map<String, Object> params) {
         //List<Object> orderedArgs = new ArrayList<>();
@@ -69,10 +69,10 @@ public class VariableInterpolationFormat {
 
             String variableValue = null;
             if (!params.containsKey(key)) {
-            	variableValue = "";
-            	LOG.warn("Parameter not found for key: " + key);
+                variableValue = "";
+                LOG.warn("Parameter not found for key: " + key);
             } else {
-            	variableValue = params.get(key).toString();            	
+                variableValue = params.get(key).toString();                
             }
 
 //            int index = nameToIndex.computeIfAbsent(key, k -> {
@@ -89,7 +89,7 @@ public class VariableInterpolationFormat {
         return resultSB.toString();
     }
     
-	private String inerpolateRecursive(String template, Map<String, Object> params, int currentDepth) {
+    private String inerpolateRecursive(String template, Map<String, Object> params, int currentDepth) {
         if (currentDepth > maxDepth) {
             throw new IllegalStateException("Maximum interpolation depth exceeded.");
         }

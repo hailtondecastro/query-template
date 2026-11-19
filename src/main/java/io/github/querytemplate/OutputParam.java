@@ -11,16 +11,16 @@ class OutputParam<T> {
         this.value = value;
     }
 
-	T getValue() {
-		return value;
-	}
+    T getValue() {
+        return value;
+    }
 
-	void setValue(T value) {
-		this.value = value;
-	}
-	
-	@Override
-	public String toString() {
-		return String.valueOf(value);
-	}
+    void setValue(T value) {
+        this.value = value;
+    }
+    
+    @Override
+    public String toString() {
+        return String.valueOf(value);
+    }
 }

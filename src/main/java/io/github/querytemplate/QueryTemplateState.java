@@ -5,11 +5,11 @@ import java.util.Map;
 
 public interface QueryTemplateState<Q, F> {
 
-	QueryTemplate<Q, F> getTemplateOwner();
+    QueryTemplate<Q, F> getTemplateOwner();
 
-	String getQueryString();
+    String getQueryString();
 
-	F getFilter();
+    F getFilter();
 
-	Map<PropertyMapper<Q, F, ?>, List<AssignedParameterInfo<?>>> getPropertyMapperToAssignedParameterInfo();
+    Map<PropertyMapper<Q, F, ?>, List<AssignedParameterInfo<?>>> getPropertyMapperToAssignedParameterInfo();
 }

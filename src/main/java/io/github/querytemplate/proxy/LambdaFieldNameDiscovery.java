@@ -23,10 +23,10 @@ public class LambdaFieldNameDiscovery {
     
     private static final Logger logger = LoggerFactory.getLogger(LambdaFieldNameDiscovery.class);
 
-	private static transient WeakReference<ConcurrentHashMap<Class, Object>> proxyInstancesMapWR;
+    private static transient WeakReference<ConcurrentHashMap<Class, Object>> proxyInstancesMapWR;
     
     @SuppressWarnings("unchecked")
-	private static <T> T getProxyInstance(ProxyFactory proxyFactory, Class<T> targetClass) {
+    private static <T> T getProxyInstance(ProxyFactory proxyFactory, Class<T> targetClass) {
         ConcurrentHashMap<Class, Object> proxyInstancesMap = null;
         if (proxyInstancesMapWR == null || proxyInstancesMapWR.get() == null) {
             proxyInstancesMap = new ConcurrentHashMap<Class, Object>();
@@ -36,9 +36,9 @@ public class LambdaFieldNameDiscovery {
         }
         if (!proxyInstancesMap.containsKey(targetClass)) {
             if (!targetClass.isInterface())
-            	proxyFactory.setSuperclass(targetClass);
+                proxyFactory.setSuperclass(targetClass);
             else
-            	proxyFactory.setInterfaces(new Class[]{ targetClass });
+                proxyFactory.setInterfaces(new Class[]{ targetClass });
             proxyFactory.setFilter(methodFilter);
             Object proxy;
             try {
@@ -65,7 +65,7 @@ public class LambdaFieldNameDiscovery {
         callback.apply(beanProxy);
         
         if (logger.isTraceEnabled())
-        	logger.trace("returning 'fildByGetMethod': " + currentCallChainTD.get().callPath());
+            logger.trace("returning 'fildByGetMethod': " + currentCallChainTD.get().callPath());
         String result = currentCallChainTD.get().callPath();
         currentCallChainTD.set(null);
         return result;
@@ -78,7 +78,7 @@ public class LambdaFieldNameDiscovery {
         callback.apply(beanProxy);
         
         if (logger.isTraceEnabled())
-        	logger.trace("returning 'fildByGetMethod': " + currentCallChainTD.get().callPath());
+            logger.trace("returning 'fildByGetMethod': " + currentCallChainTD.get().callPath());
         String result = currentCallChainTD.get().callPath();
         CallChainInfo callChainInfo = currentCallChainTD.get();
         currentCallChainTD.set(null);
@@ -86,54 +86,54 @@ public class LambdaFieldNameDiscovery {
     }
     
     public static class CallInfo {
-		private String fieldName;
-		private Method method;
-		public CallInfo(
-			String fieldName,
-			Method method) {
-			super();
-			this.fieldName = fieldName;
-			this.method = method;
-		}
-		
-		@Override
-		public String toString() {
-			return "CallRingInfo [fieldName=" + fieldName + ", method=" + method + "]";
-		}
-		public String getFieldName() {
-			return fieldName;
-		}
-		public Method getMethod() {
-			return method;
-		}
+        private String fieldName;
+        private Method method;
+        public CallInfo(
+            String fieldName,
+            Method method) {
+            super();
+            this.fieldName = fieldName;
+            this.method = method;
+        }
+        
+        @Override
+        public String toString() {
+            return "CallRingInfo [fieldName=" + fieldName + ", method=" + method + "]";
+        }
+        public String getFieldName() {
+            return fieldName;
+        }
+        public Method getMethod() {
+            return method;
+        }
     }
     
     public static class CallChainInfo {
-    	private List<CallInfo> callInfos = new java.util.ArrayList<>();
-		@Override
-		public String toString() {
-			return "CallChainInfo [callInfos=" + callInfos + "]";
-		}
-		
-		public String callPath() {
-			// Source - https://stackoverflow.com/a/63610480
-			// Posted by Joachim Sauer, modified by community. See post 'Timeline' for change history
-			// Retrieved 2026-10-01, License - CC BY-SA 4.0
-			String callPath = this.callInfos.stream().map(ringInfo -> ringInfo.fieldName)
-					.collect(Collectors.joining("."));
-			return callPath;
-		}
-		public Class<?> lastMethodReturnType() {
+        private List<CallInfo> callInfos = new java.util.ArrayList<>();
+        @Override
+        public String toString() {
+            return "CallChainInfo [callInfos=" + callInfos + "]";
+        }
+        
+        public String callPath() {
+            // Source - https://stackoverflow.com/a/63610480
+            // Posted by Joachim Sauer, modified by community. See post 'Timeline' for change history
+            // Retrieved 2026-10-01, License - CC BY-SA 4.0
+            String callPath = this.callInfos.stream().map(ringInfo -> ringInfo.fieldName)
+                    .collect(Collectors.joining("."));
+            return callPath;
+        }
+        public Class<?> lastMethodReturnType() {
             if (this.callInfos.isEmpty())
                 return null;
             return this.callInfos.get(this.callInfos.size() - 1).method.getReturnType();
         }
-		public void add(CallInfo callInfo) {
-			this.callInfos.add(callInfo);
-		}
-		public List<CallInfo> getCallInfos() {
-			return Collections.unmodifiableList(this.callInfos);
-		}		
+        public void add(CallInfo callInfo) {
+            this.callInfos.add(callInfo);
+        }
+        public List<CallInfo> getCallInfos() {
+            return Collections.unmodifiableList(this.callInfos);
+        }        
     }
     
     static Pattern fieldFromMethodPattern = Pattern.compile("^(is|get)(.)(.*)$");
@@ -146,36 +146,36 @@ public class LambdaFieldNameDiscovery {
         }
     };
     private static class MethodHandlerDefault implements MethodHandler{
-    	private ProxyFactory proxyFactory;
+        private ProxyFactory proxyFactory;
 
-		public MethodHandlerDefault(
-			ProxyFactory proxyFactory) {
-			super();
-			this.proxyFactory = proxyFactory;
-		}
+        public MethodHandlerDefault(
+            ProxyFactory proxyFactory) {
+            super();
+            this.proxyFactory = proxyFactory;
+        }
 
-		@SuppressWarnings("unused")
-		public ProxyFactory getProxyFactory() {
-			return proxyFactory;
-		}
-		
+        @SuppressWarnings("unused")
+        public ProxyFactory getProxyFactory() {
+            return proxyFactory;
+        }
+        
         @Override
         public Object invoke(Object self, Method thisMethod, Method proceed,
                 Object[] args) throws Throwable {
                 Matcher matcher = fieldFromMethodPattern
                         .matcher(thisMethod.getName());
             if (matcher.matches()) {
-            	if (currentCallChainTD.get() != null) {
-            		//lastFieldCallChainTD.set(new ArrayList<>());
-            	} else {
-            		currentCallChainTD.set(new CallChainInfo());
-            	}
-            	String fieldName = matcher.group(2).toLowerCase() + matcher.group(3);
-            	currentCallChainTD.get().add(new CallInfo(fieldName, thisMethod));
+                if (currentCallChainTD.get() != null) {
+                    //lastFieldCallChainTD.set(new ArrayList<>());
+                } else {
+                    currentCallChainTD.set(new CallChainInfo());
+                }
+                String fieldName = matcher.group(2).toLowerCase() + matcher.group(3);
+                currentCallChainTD.get().add(new CallInfo(fieldName, thisMethod));
             } else {
                 throw new RuntimeException(
-                		"Only getter methods can be called. Method called: "
-                		//"Somente os metodos get podem ser chamados. Metodo chamado: "
+                        "Only getter methods can be called. Method called: "
+                        //"Somente os metodos get podem ser chamados. Metodo chamado: "
                                 + thisMethod.getName());
             }
             if (!Modifier
@@ -184,13 +184,13 @@ public class LambdaFieldNameDiscovery {
                             || hasParameterlessPublicConstructor(
                                     thisMethod.getReturnType()))) {
                 return getProxyInstance(this.proxyFactory, thisMethod.getReturnType());
-			} else {
-				if (proceed.getReturnType().isPrimitive()) {
-					return getDefaultValue(proceed.getReturnType());
-				} else {
-					return null;
-				}
-			}
+            } else {
+                if (proceed.getReturnType().isPrimitive()) {
+                    return getDefaultValue(proceed.getReturnType());
+                } else {
+                    return null;
+                }
+            }
         }
     }
     

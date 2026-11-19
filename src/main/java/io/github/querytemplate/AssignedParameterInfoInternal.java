@@ -2,13 +2,13 @@ package io.github.querytemplate;
 
 public interface AssignedParameterInfoInternal<P> extends AssignedParameterInfo<P> {
 
-	void setName(String name);
+    void setName(String name);
 
-	void setUnpackedRepeatedName(String unpackedRepeatedName);
+    void setUnpackedRepeatedName(String unpackedRepeatedName);
 
-	void setIndex(Integer index);
+    void setIndex(Integer index);
 
-	void setPosition(Integer position);
+    void setPosition(Integer position);
 
-	void setValue(P value);
+    void setValue(P value);
 }

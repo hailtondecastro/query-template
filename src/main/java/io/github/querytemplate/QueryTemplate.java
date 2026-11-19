@@ -102,33 +102,33 @@ import java.util.Set;
  * @param <F> the type of the filter. It is used internally to create proxy objects and resolve properties by lambda expressions, used too for strong typing and IDE code completion.
  */
 public interface QueryTemplate<Q, F> {
-	void setUp();
+    void setUp();
 
-	/**
-	 * Assigns values to the parameters based on the participation of the properties in the query.
-	 *
-	 * @param state the state of the query template.
-	 * @param query        the query to set the parameters on.
-	 */
-	void setParamQuery(QueryTemplateState<Q, F> state,
-		Q query);
+    /**
+     * Assigns values to the parameters based on the participation of the properties in the query.
+     *
+     * @param state the state of the query template.
+     * @param query        the query to set the parameters on.
+     */
+    void setParamQuery(QueryTemplateState<Q, F> state,
+        Q query);
 
-	/**
-	 * Assembles the query according to the parameters that are participating in the query.
-	 *
-	 * @param filter the filter object.
-	 * @return the assembled query.
-	 */
-	QueryTemplateState<Q, F> buildQueryState(F filter);
+    /**
+     * Assembles the query according to the parameters that are participating in the query.
+     *
+     * @param filter the filter object.
+     * @return the assembled query.
+     */
+    QueryTemplateState<Q, F> buildQueryState(F filter);
 
-	/**
-	 * Create a QueryTemplate instance with the given configuration.
-	 * @param <SQ> the type of the query. It is platform-specific (e.g., String for SQL, CriteriaQuery for JPA, etc.). It is not used internally, it is only for strong typing and IDE code completion.
-	 * @param <SF> the type of the filter. It is used internally to create proxy objects and resolve properties by lambda expressions, used too for strong typing and IDE code completion.
-	 * @param config the configuration for the QueryTemplate.
-	 * @return QueryTemplate instance with the given configuration.
-	 */
-	public static <SQ, SF> QueryTemplate<SQ, SF> of(QueryTemplateConfig<SQ, SF> config) {
-		return new QueryTemplateDefault<>(config);
-	}
+    /**
+     * Create a QueryTemplate instance with the given configuration.
+     * @param <SQ> the type of the query. It is platform-specific (e.g., String for SQL, CriteriaQuery for JPA, etc.). It is not used internally, it is only for strong typing and IDE code completion.
+     * @param <SF> the type of the filter. It is used internally to create proxy objects and resolve properties by lambda expressions, used too for strong typing and IDE code completion.
+     * @param config the configuration for the QueryTemplate.
+     * @return QueryTemplate instance with the given configuration.
+     */
+    public static <SQ, SF> QueryTemplate<SQ, SF> of(QueryTemplateConfig<SQ, SF> config) {
+        return new QueryTemplateDefault<>(config);
+    }
 }

@@ -13,14 +13,14 @@ package io.github.querytemplate;
  *           internally, it is only for strong typing and IDE code completion.                       
  * @param <F> Filter type. It is used internally to create proxy objects and resolve
  */
-public interface PropertyMapperConfigInternal<Q, F, P, I> extends PropertyMapperConfig<Q, F, P, I> {	
+public interface PropertyMapperConfigInternal<Q, F, P, I> extends PropertyMapperConfig<Q, F, P, I> {    
 
-	/**
-	 * Updates a parameter of the property mapper.<br>
-	 * It is necessary because of {@link ParameterMapperConfig#parameterName(String)}
-	 * 
-	 * @param parameterMapperConfig the configuration of the parameter to update.
-	 * @return this instance for method chaining.
-	 */
-	ParameterMapperConfig<Q, F, P, I> updateParameter(ParameterMapperConfig<Q, F, P, I> parameterMapperConfig);
+    /**
+     * Updates a parameter of the property mapper.<br>
+     * It is necessary because of {@link ParameterMapperConfig#parameterName(String)}
+     * 
+     * @param parameterMapperConfig the configuration of the parameter to update.
+     * @return this instance for method chaining.
+     */
+    ParameterMapperConfig<Q, F, P, I> updateParameter(ParameterMapperConfig<Q, F, P, I> parameterMapperConfig);
 }
