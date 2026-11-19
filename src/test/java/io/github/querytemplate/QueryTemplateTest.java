@@ -891,6 +891,29 @@ public class QueryTemplateTest {
 				() -> config.withVariable("missing", null));
 		assertThat(exception.getMessage(), containsString("Variable value must not be null: missing"));
 	}
+	
+	@Test
+	public void escapeAndInterpolationVariableConflict() {
+		String query = 
+				"SELEC ID               \n" +
+				"from EMPLOYEESTB empl  \n" +
+				"    ${criterionVar}";
+		String criterionVar = 
+				"--WHERE                \n" +
+				"  --\\[nonexixtentProperty\\]\\[ some_example is null\\]";
+		QueryTemplateConfig<Query<MyEntity>, MyFilter> config = QueryTemplateConfig.of(
+				query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
+		config.withVariable("criterionVar", criterionVar);
+
+		QueryTemplateState<Query<MyEntity>, MyFilter> state = QueryTemplate.of(config).buildQueryState(new MyFilter());
+		
+		String expectedQuery =
+				"SELEC ID               \n" +
+				"from EMPLOYEESTB empl  \n" +
+				"    "+ criterionVar.replace("\\", "");
+		
+		assertThat(state.getQueryString(), equalTo(expectedQuery));
+	}
     
     @Test
     public void buildQueryWithParenthesisOrInnerParenthesis() {

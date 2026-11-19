@@ -124,8 +124,8 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
         Pattern pt = Pattern.compile(this.splitterIntoPartsPattern);
 
         Map<String, String> escapeMap = new LinkedHashMap<>();
-        this.queryTextEscapedSubs = this.replaceEscapes(queryText, escapeMap);
-        this.queryTextEscapedSubs = this.variableInterpolationFormat.interpolate(this.queryTextEscapedSubs, this.config.variableValues());
+        this.queryTextEscapedSubs = this.variableInterpolationFormat.interpolate(queryText, this.config.variableValues());
+        this.queryTextEscapedSubs = this.replaceEscapes(this.queryTextEscapedSubs, escapeMap);
 
         this.queryTextParts = pt.split(this.queryTextEscapedSubs, -1);
         
