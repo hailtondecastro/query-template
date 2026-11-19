@@ -895,7 +895,7 @@ public class QueryTemplateTest {
 	@Test
 	public void escapeAndInterpolationVariableConflict() {
 		String query = 
-				"SELEC ID               \n" +
+				"SELECT ID               \n" +
 				"from EMPLOYEESTB empl  \n" +
 				"    ${criterionVar}";
 		String criterionVar = 
@@ -908,9 +908,35 @@ public class QueryTemplateTest {
 		QueryTemplateState<Query<MyEntity>, MyFilter> state = QueryTemplate.of(config).buildQueryState(new MyFilter());
 		
 		String expectedQuery =
-				"SELEC ID               \n" +
+				"SELECT ID               \n" +
 				"from EMPLOYEESTB empl  \n" +
 				"    "+ criterionVar.replace("\\", "");
+		
+		assertThat(state.getQueryString(), equalTo(expectedQuery));
+	}
+	
+	@Test
+	public void commentAndInterpolationVariableConflict() {
+		String query = 
+				"SELECT ID               \n" +
+				"from EMPLOYEESTB empl  \n" +
+				"    ${criterionVar}";
+		String criterionVar = 
+				"--WHERE                \n" +
+				"  --\\[nonexixtentProperty\\]\\[ some_example is null\\]";
+		QueryTemplateConfig<Query<MyEntity>, MyFilter> config = QueryTemplateConfig.of(
+				query, new SimpleTypeToken<Query<MyEntity>>(){}.getRawType(), MyFilter.class);
+		config
+			.removeComments(true)
+			.withVariable("criterionVar", criterionVar);
+
+		QueryTemplateState<Query<MyEntity>, MyFilter> state = QueryTemplate.of(config).buildQueryState(new MyFilter());
+		
+		String expectedQuery =
+				"SELECT ID               \n" +
+				"from EMPLOYEESTB empl  \n" +
+				"    \n" +
+				"  ";
 		
 		assertThat(state.getQueryString(), equalTo(expectedQuery));
 	}

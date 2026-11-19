@@ -108,9 +108,9 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
 			}
     		this.mappersByPropertyNameMap.put(mapper.getFilterPrp(), mapper);
     	}
-    	
+        queryText = this.variableInterpolationFormat.interpolate(queryText, this.config.variableValues());
         if (this.config.isCompactQueryText()) {
-            queryText = this.compactInputQueryText(this.config.getQueryTextOriginal());
+            queryText = this.compactInputQueryText(queryText);
         }
 		if (this.config.isRemoveComments()) {
 			queryText = this.removeComments(queryText);
@@ -124,8 +124,7 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
         Pattern pt = Pattern.compile(this.splitterIntoPartsPattern);
 
         Map<String, String> escapeMap = new LinkedHashMap<>();
-        this.queryTextEscapedSubs = this.variableInterpolationFormat.interpolate(queryText, this.config.variableValues());
-        this.queryTextEscapedSubs = this.replaceEscapes(this.queryTextEscapedSubs, escapeMap);
+        this.queryTextEscapedSubs = this.replaceEscapes(queryText, escapeMap);
 
         this.queryTextParts = pt.split(this.queryTextEscapedSubs, -1);
         
