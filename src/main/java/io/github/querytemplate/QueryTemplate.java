@@ -12,18 +12,18 @@ import java.util.Set;
  * <pre>
  *
  * [fixed part of the query]
- * [ [param_token][and_token*][or_token*][no_operator*] *][query_helper*]
+ * [ [partici_exp_token][and_token*][or_token*][no_operator*] *][query_helper*]
  * [filters_token]
  * [where_token*]
  * [open_parenthesis*]
  * [close_parenthesis*]
  * [query_helper*]
- * [param_token][repeat*][and_token*][or_token*][no_operator*][criterion_token]
- * [ [param_token][and_token*][or_token*][no_operator*] *][query_helper*]
+ * [partici_exp_token][repeat*][and_token*][or_token*][no_operator*][criterion_token]
+ * [ [partici_exp_token][and_token*][or_token*][no_operator*] *][query_helper*]
  * [open_parenthesis*]
  * [close_parenthesis*]
- * [param_token][repeat*][and_token*][or_token*][no_operator*][criterion_token]
- * [ [param_token][and_token*][or_token*][no_operator*] *][query_helper*]
+ * [partici_exp_token][repeat*][and_token*][or_token*][no_operator*][criterion_token]
+ * [ [partici_exp_token][and_token*][or_token*][no_operator*] *][query_helper*]
  * ...
  * [open_parenthesis*]
  * [close_parenthesis*]
@@ -79,7 +79,7 @@ import java.util.Set;
  * or).<br>
  * [open_parenthesis]: Opening parenthesis. Only appears if it has content.<br>
  * [close_parenthesis]: Closing parenthesis. Only appears if it has content.<br>
- * [param_token]: Token with the names of the parameters (property in the filter)
+ * [partici_exp_token]: Token with the names of the parameters (property in the filter)
  * separated by comma, surrounded by the parameter delimiters. All the parameters
  * must be checked as 'participating in the query' for the criterion to be included. 
  * It is possible to use "!"
@@ -93,9 +93,9 @@ import java.util.Set;
  * preceding parameters is participating in the query.<br>
  * [query_helper]: Another QueryTemplate that will be inserted into the query
  * based on the same filter items. If there is
- * "[ [param_token][and_token*][or_token*][no_operator*] *]" before the
+ * "[ [partici_exp_token][and_token*][or_token*][no_operator*] *]" before the
  * [query_helper] then the use of this [query_helper] will be conditioned to the
- * respective properties being participating in the query in that case the operator
+ * respective participation expression being participating in the query in that case the operator
  * can be included in the preceding the [query_helper] content ('and', 'or' or 'no operator').<br>
  * 
  * @param <Q> the type of the query. It is platform-specific (e.g., String for SQL, CriteriaQuery for JPA, etc.). It is not used internally, it is only for strong typing and IDE code completion.

@@ -14,10 +14,11 @@ class QueryTemplateTokenPojo {
         AND,
         OR,
         NO_OPERATOR,
+        PRINT_ONLY,
         OPEN_PARENTHESIS,
         CLOSE_PARENTHESIS,
         EXTRA,
-        PARAMETER,
+        PARTICIPATION_EXPRESSION,
         REPEAT,
         CRITERION,
         QUERY_HELPER

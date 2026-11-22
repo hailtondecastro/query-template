@@ -65,7 +65,7 @@ public class QueryTemplateTest {
             paramInfo) -> query.setParameter(position, value);
     }
     
-    private <P> AssignNamedParameter<Query<MyEntity>, P> simpleOnParticipatesNamed(Type type) {
+    private <E, P> AssignNamedParameter<Query<E>, P> simpleOnParticipatesNamed(Type type) {
         return (query,
             name,
             value,
@@ -881,6 +881,177 @@ public class QueryTemplateTest {
         );
     }
 
+    static class EmpFilter {
+        boolean commentsEnabled = false;
+        String name = null;
+        Long birthYear = null;
+        public boolean isCommentsEnabled() {return commentsEnabled;}
+        public void setCommentsEnabled(boolean commentsEnabled) {this.commentsEnabled = commentsEnabled;}
+        public String getName() {return name;}
+        public void setName(String name) {this.name = name;}
+        public Long getBirthYear() {return birthYear;}
+        public void setBirthYear(Long birthYear) {this.birthYear = birthYear;}            
+    }
+    public void printOnlyCriterionBase(
+            Function<String, String> replacer,
+            Function<
+                QueryTemplateConfig<Query<Long>, EmpFilter>, 
+                QueryTemplateConfig<Query<Long>, EmpFilter>
+            > configChanger,
+            BiConsumer<Action, QueryTemplateState<Query<Long>, EmpFilter>> assertsQueryText,
+            BiConsumer<Action, QueryMock<Long>> assertsQueryMock
+        ) {
+        EmpFilter empFilter = new EmpFilter();
+        String query = 
+                "SELECT ID                  \n" +
+                "    from EMPLOYEESTB empl  \n" +
+                "  [filters]                \n" +
+                "    [where]                \n" +
+                "      [commentsEnabled][print_only][--filtering by name] \n" +
+                "      [name][EMP_NAME = :name]                  \n" +
+                "      [commentsEnabled][print_only][--filtering by birthYear] \n" +
+                "      [birthYear][EMP_BIRTH_YEAR = :birthYear]  \n"
+                ;
+        query = replacer.apply(query);
+        
+        QueryTemplateConfig<Query<Long>, EmpFilter> config = QueryTemplateConfig.of(query,
+                new SimpleTypeToken<Query<Long>>() {
+                }.getRawType(), EmpFilter.class);
+        config
+            .proxyFactoryCreator(this.proxyFactoryCreator)
+            .shrinkBlankLinesAfterBuild(true)
+            .addMapper(EmpFilter::isCommentsEnabled)
+                .participatesInQuery(ParticipantCheckers.BOOLEAN_TRUE)
+                .onParticipatesNamed(null)
+                .onParticipatesPositional(null)
+                .done()
+            .addMapper(EmpFilter::getName)
+                .participatesInQuery(ParticipantCheckers.STRING_NOTEMPTY)
+                .onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.STRING))
+                .done()
+            .addMapper(EmpFilter::getBirthYear)
+                .participatesInQuery(ParticipantCheckers.NUMBER_NOTZERO)
+                .onParticipatesNamed(this.simpleOnParticipatesNamed(StandardBasicTypes.LONG))
+                .done();
+        
+        config = configChanger.apply(config);
+        
+        empFilter.setCommentsEnabled(true);
+        empFilter.setName("John Doe");
+        empFilter.setBirthYear(1980L);
+        
+        QueryTemplate<Query<Long>, EmpFilter> qt = QueryTemplate.of(config);
+        QueryTemplateState<Query<Long>, EmpFilter> state = qt.buildQueryState(empFilter);
+        
+        Action assertsQueryTextOriginal = () -> {
+            assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*empl\\s*--filtering by name.*")));
+            assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*EMP_NAME = :name.*")));
+            assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*:name\\s*--filtering by birthYear.*")));
+            // The repeat token unfolds filterPrp7/filterPrp8 into indexed parameters.
+            assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*and\\s*EMP_BIRTH_YEAR = :birthYear.*")));
+        };
+        if (assertsQueryText != null) {
+            assertsQueryText.accept(assertsQueryTextOriginal, state);
+        } else {
+            assertsQueryTextOriginal.execute();
+        }
+        
+        Action assertsQueryMockOriginal = () -> {
+            assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*empl\\s*--filtering by name.*")));
+            assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*where\\s*EMP_NAME = :name.*")));
+            assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*:name\\s*--filtering by birthYear.*")));
+            // The repeat token unfolds filterPrp7/filterPrp8 into indexed parameters.
+            assertThat(state.getQueryString(), matchesPattern(replacer.apply("(?s).*and\\s*EMP_BIRTH_YEAR = :birthYear.*")));
+        };
+        
+        QueryMock<Long> queryMock = new QueryMock<>();
+        qt.setParamQuery(state, queryMock.getQuery());
+        
+        assertThat(queryMock.getParameterCalls(), hasItem(containsString(replacer.apply("setParameter[name, John Doe, org.hibernate.type.StringType"))));
+        assertThat(queryMock.getParameterCalls(), hasItem(containsString(replacer.apply("setParameter[birthYear, 1980, org.hibernate.type.LongType"))));
+        
+        if (assertsQueryMock != null) {
+            assertsQueryMock.accept(assertsQueryMockOriginal, queryMock);
+        } else {
+            assertsQueryMockOriginal.execute();
+        }
+    }
+    
+    @Test
+    public void printOnlyCriterion() {
+        this.printOnlyCriterionBase(
+                Function.identity(),
+                Function.identity(),
+                null,
+                null
+        );
+    }
+
+    @Test
+    public void printOnlyCriterionInsideParenthesis() {
+        this.printOnlyCriterionBase(
+                s -> s
+                    .replace("      [commentsEnabled][print_only][--filtering by name] \n",
+                            "      [name][(] \n" +
+                            "          [commentsEnabled][print_only][--filtering by name] \n" +
+                            "      [)] \n"
+                    ),
+                Function.identity(),
+                null,
+                null
+        );
+    }
+    
+    @Test
+    public void printOnlyCriterionOutsideParenthesis() {
+        this.printOnlyCriterionBase(
+                s -> s
+                    .replace("      [commentsEnabled][print_only][--filtering by name] \n",
+                            "      [print_only][(] \n" +
+                            "          [commentsEnabled][no_operator][--filtering by name] \n" +
+                            "      [)] \n"
+                    )
+                    .replace("(?s).*empl\\s*--filtering by name.*",
+                            "(?s).*\\s*(\\s*--filtering by name\\s*).*"
+                        ),
+                Function.identity(),
+                null,
+                null
+        );
+    }
+    
+    @Test
+    public void printOnlyCriterionOutsideAndInsideParenthesis() {
+        this.printOnlyCriterionBase(
+                s -> s
+                    .replace("      [commentsEnabled][print_only][--filtering by name] \n",
+                            "      [print_only][(] \n" +
+                            "          [commentsEnabled][print_only][--filtering by name] \n" +
+                            "      [)] \n"
+                    ),
+                Function.identity(),
+                null,
+                null
+        );
+    }
+    
+    @Test
+    public void printOnlyCriterionWrongUse() {
+        this.printOnlyCriterionBase(
+                s -> s
+                    .replace("[commentsEnabled][print_only][--filtering by name]",
+                            "[commentsEnabled][no_operator][--filtering by name]")
+                    .replace("(?s).*empl\\s*--filtering by name.*", 
+                            "(?s).*where\\s*--filtering by name.*")
+                    .replace("(?s).*where\\s*EMP_NAME = :name.*",
+                            "(?s).*and\\s*EMP_NAME = :name.*")
+                    ,
+                Function.identity(),
+                null,
+                null
+        );
+    }
+    
     @Test
     public void withVariableRejectsNullValue() {
         QueryTemplateConfig<Query<MyEntity>, MyFilter> config = QueryTemplateConfig.of(
@@ -1184,7 +1355,10 @@ public class QueryTemplateTest {
   
     public void conditionedQueryHelperBase(
             Function<String, String> replacer,
-            Function<QueryTemplateConfig<Query<MyEntity>, MyFilter>, QueryTemplateConfig<Query<MyEntity>, MyFilter>> configChanger
+            Function<
+                QueryTemplateConfig<Query<MyEntity>, MyFilter>, 
+                QueryTemplateConfig<Query<MyEntity>, MyFilter>
+            > configChanger
         ) {
         String helperQuery = CONDITIONED_QUERY_HELPER_QUERY_HELPER;
 

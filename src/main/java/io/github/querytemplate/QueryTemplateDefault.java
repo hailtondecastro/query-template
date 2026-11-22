@@ -119,8 +119,8 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
 //        this.usableMappers = new LinkedHashSet<>();
 
         this.splitterIntoPartsPattern = "(?s)" + this.config.getFiltersToken() + "|" + this.config.getWhereToken() + "|" + this.config.getAndToken() + "|" + this.config.getOrToken()
-                + "|" + this.config.getNoOperatorToken() + "|" + this.config.getRepeatToken() + "|" + this.config.getOpenParenthesisToken() + "|"
-                + this.config.getCloseParenthesisToken() + "|" + this.config.getExtraToken() + "|" + this.config.getPropertiesToken() + "|" + this.config.getCriterionToken();
+                + "|" + this.config.getNoOperatorToken() + "|" + this.config.getPrintOnlyToken() + "|" + this.config.getRepeatToken() + "|" + this.config.getOpenParenthesisToken() + "|"
+                + this.config.getCloseParenthesisToken() + "|" + this.config.getExtraToken() + "|" + this.config.getParticipationExpressionToken() + "|" + this.config.getCriterionToken();
         Pattern pt = Pattern.compile(this.splitterIntoPartsPattern);
 
         Map<String, String> escapeMap = new LinkedHashMap<>();
@@ -837,8 +837,9 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
 
         StringBuilder queryTextMod = new StringBuilder();
 
-        // Whether any parameter was already participating in the query.
-        boolean anyProperty = false;
+        // Whether any expression was already participating in the query.
+        boolean anyParticipation = false;
+        boolean printOnly = false;
         // Connector.
         String connector = " "+this.config.getTargetReservedWordWhere()+" ";
 
@@ -852,10 +853,11 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                             + this.queryTextTokens.get(i).getValue() + "'");
                 }
                 if (type == QueryTemplateTokenPojo.TokenType.FILTERS) {
-                    anyProperty = false;
+                    anyParticipation = false;
+                    printOnly = false;
                     connector = " "+this.config.getTargetReservedWordAnd()+" ";
                     if (LOG.isTraceEnabled()) {
-                        LOG.trace("buildQueryState: Resetting anyProperty to false and connector to AND (Dafault) for FILTERS token.");
+                        LOG.trace("buildQueryState: Resetting anyParticipation and printOnly to false and connector to AND (Dafault) for FILTERS token.");
                     }
                 } else if (type == QueryTemplateTokenPojo.TokenType.WHERE) {
                     connector = " "+this.config.getTargetReservedWordWhere()+" ";
@@ -897,29 +899,46 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                         LOG.trace("buildQueryState: Current connector: '" + connector
                                 + "'. Not setting it to empty (doble space) for NO_OPERATOR token (  ) because it already contains WHERE.");
                     }
+                } else if (type == QueryTemplateTokenPojo.TokenType.PRINT_ONLY) {
+                    //In this method, print_only can apear only before an opnen parenthesis.
+                    if (i == this.queryTextTokens.size() - 1 || this.queryTextTokens.get(i + 1)
+                            .getType() != QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS) {
+                        throw new QueryTemplateException(
+                                QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS + " Expected\n"
+                                        + this.tokenExceptionMessage(Math.min(i, this.queryTextTokens.size() - 1),
+                                                this.queryTextTokens, "UNEXPECTED TOKEN (AFTER)"));
+                    }                    
+                    printOnly = true;
+                    if (LOG.isTraceEnabled()) {
+                        LOG.trace("buildQueryState: PRINT_ONLY token found. Setting printOnly to true.");
+                    }
                 } else if (type == QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS) {
                     OutputParam<Integer> indexOutput =  new OutputParam<Integer>(i);
-                    OutputParam<Boolean> anyPropertyParenthesis = new OutputParam<Boolean>(false);
-                    queryTextMod.append(this.buildParenthesisCriterion(indexOutput, connector, anyPropertyParenthesis,
-                            filter, state));
+                    OutputParam<Boolean> anyParticipationParenthesis = new OutputParam<Boolean>(false);
+                    queryTextMod.append(this.buildParenthesisCriterion(indexOutput, printOnly, connector,
+                        anyParticipationParenthesis, 
+                        //anyPrintOnlyParenthesis, 
+                        filter, state));
                     if (LOG.isTraceEnabled()) {
-                        if (anyPropertyParenthesis.getValue()) {
+                        if (anyParticipationParenthesis.getValue()) {
                             LOG.trace(
-                                    "buildQueryState: Parenthesis criterion has participating property/criterion. Setting anyProperty to true and next connector to AND (Default).");
+                                    "buildQueryState: Parenthesis criterion has participating property/criterion. Setting anyParticipation to true and next connector to AND (Default).");
                         } else {
                             LOG.trace(
-                                    "buildQueryState: Parenthesis criterion has NO participating property/criterion. anyProperty remains "
-                                            + anyProperty);
+                                    "buildQueryState: Parenthesis criterion has NO participating property/criterion. anyParticipation remains "
+                                            + anyParticipation);
                         }
                     }
                     i = indexOutput.getValue();
-                    anyProperty = anyProperty || anyPropertyParenthesis.getValue();
-                    if (anyProperty) {
+                    anyParticipation = anyParticipation || anyParticipationParenthesis.getValue();
+                    if (anyParticipation) {
                         connector = " "+this.config.getTargetReservedWordAnd()+" ";
                         //   There is no need to check if the current connector already contains WHERE, 
                         // because here we are setting only the default connector for the next connector 
                         // property/criterion after the parenthesis, which is AND. 
                     }
+                    //In this method, print_only can appear only before an open parenthesis. So after processing the parenthesis, we can reset it to false.
+                    printOnly = false;
                 } else if (type == QueryTemplateTokenPojo.TokenType.EXTRA) {
                     i++;
                     if (i >= this.queryTextTokens.size()) {
@@ -986,7 +1005,7 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                                                 Math.min(i, this.queryTextTokens.size() - 1),
                                                 this.queryTextTokens, msgExParent));
                     }
-                    if (anyProperty) {
+                    if (anyParticipation) {
                         queryTextMod.append(connector).append(this.queryTextTokens.get(i).getValue());
                         if (LOG.isTraceEnabled()) {
                             LOG.trace("buildQueryState: Processing EXTRA token. There is criterion with participating parameters. Appending connector '" + connector
@@ -997,22 +1016,23 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                 } else if (type == QueryTemplateTokenPojo.TokenType.QUERY_HELPER) {
                     queryTextMod.append(" ")
                             .append(this.buildQueryHelper(filter, this.queryTextTokens.get(i))).append(" ");
-                } else if (type == QueryTemplateTokenPojo.TokenType.PARAMETER) {
+                } else if (type == QueryTemplateTokenPojo.TokenType.PARTICIPATION_EXPRESSION) {
                     OutputParam<Integer> indexOutput =  new OutputParam<Integer>(i);
-                    OutputParam<Boolean> propertyParticipatesOutput = new OutputParam<Boolean>(false);
-                    queryTextMod.append(this.buildPropertyCriterion(indexOutput, connector, propertyParticipatesOutput, anyProperty,
-                            filter, state));
+                    OutputParam<Boolean> participatesOutput = new OutputParam<Boolean>(false);
+                    OutputParam<Boolean> printOnlyOutput = new OutputParam<Boolean>(false);
+                    queryTextMod.append(this.buildParticipationExpressionCriterion(indexOutput, connector, participatesOutput,
+                        printOnlyOutput, anyParticipation, filter, state));
                     i = indexOutput.getValue();
-                    anyProperty = anyProperty || propertyParticipatesOutput.getValue();
-                    if (anyProperty) {
+                    anyParticipation = anyParticipation || participatesOutput.getValue();
+                    if (anyParticipation) {
                         connector = " "+this.config.getTargetReservedWordAnd()+" ";
                     }
                     if (LOG.isTraceEnabled()) {
                         LOG.trace(
                                 "buildQueryState: Processed PARAMETER token. Appended parameter criterion to queryTextMod. Updated indexOutput: "
-                                        + indexOutput.getValue() + ". propertyParticipatesOutput: "
-                                        + propertyParticipatesOutput.getValue() + ". anyProperty: " 
-                                        + anyProperty + ". Next connector set to AND (Default) for the next parameter/criterion.");
+                                        + indexOutput.getValue() + ". participatesOutput: "
+                                        + participatesOutput.getValue() + ". anyParticipation: " 
+                                        + anyParticipation + ". Next connector set to AND (Default) for the next parameter/criterion.");
                     }
                 } else {
                     throw new QueryTemplateException(
@@ -1311,17 +1331,19 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
      * Assembles a part of the query that depends on the parameter(s) currently
      * being processed. Returns the part along with the connector.
      */
-    private String buildPropertyCriterion(OutputParam<Integer> indexOutput, String currentConnector,
-            OutputParam<Boolean> propertyParticipatesOutput, 
-            boolean anyPropertyBefore, F filter, 
+    private String buildParticipationExpressionCriterion(OutputParam<Integer> indexOutput, String currentConnector,
+            OutputParam<Boolean> participatesOutput, 
+            OutputParam<Boolean> printOnlyOutput,
+            boolean anyParticipationBefore, F filter, 
             QueryTemplateStateInternal<Q, F> state) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("buildPropertyCriterion: Starting to build parameter criterion. Current indexOutput: " + indexOutput.getValue());
         }
         StringBuilder queryTextMod = new StringBuilder();
+        printOnlyOutput.setValue(false);
         boolean repeatTokenActive = false;
         String repeatConnector = "  ";
-        propertyParticipatesOutput.setValue(false);
+        participatesOutput.setValue(false);
         String[] filterPrps = new String[] {};
         String evalPrps = null;
         String filterPrpsStr = "";
@@ -1337,33 +1359,35 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
 
             if (indexOutput.getValue() < this.queryTextTokens.size() && this.queryTextTokens.get(indexOutput.getValue()) != null) {
                 QueryTemplateTokenPojo.TokenType type = this.queryTextTokens.get(indexOutput.getValue()).getType();
-                if (type == QueryTemplateTokenPojo.TokenType.PARAMETER) {
+                if (type == QueryTemplateTokenPojo.TokenType.PARTICIPATION_EXPRESSION) {
+                    printOnlyOutput.setValue(false);
                     String tokenValue = this.queryTextTokens.get(indexOutput.getValue()).getValue();
                     if (LOG.isTraceEnabled()) {
-                        LOG.trace("buildPropertyCriterion: Processing PARAMETER token with value '" + tokenValue + "' at index " + indexOutput.getValue());
+                        LOG.trace("buildPropertyCriterion: Processing PARTICIPATION_EXPRESSION token with value '" + tokenValue + "' at index " + indexOutput.getValue());
                     }
                     Pattern rxReservedEvalReplacer = Pattern.compile(this.config.getReservedEvalProperty());
                     Pattern rxReservedEvalMatcher = Pattern.compile("(?s)\\s*" + this.config.getReservedEvalProperty() + ".*");
                     if (rxReservedEvalMatcher.matcher(tokenValue).matches()) {
                         evalPrps = rxReservedEvalReplacer.matcher(tokenValue).replaceAll("").trim();
                         if (LOG.isTraceEnabled()) {
-                            LOG.trace("buildPropertyCriterion: PARAMETER token value '" + tokenValue
-                                    + "' matches the reserved eval property pattern. Extracting eval expression.");
+                            LOG.trace("buildPropertyCriterion: PARTICIPATION_EXPRESSION token value '" + tokenValue
+                                    + "' matches the reserved eval expression pattern. Extracting eval expression.");
                         }
+                        
                     } else {
                         evalPrps = null;
                         repeatTokenActive = false;
                         filterPrpsStr = this.queryTextTokens.get(indexOutput.getValue()).getValue();
                         filterPrps = filterPrpsStr.split(",", -1);
                         if (LOG.isTraceEnabled()) {
-                            LOG.trace("buildPropertyCriterion: PARAMETER token value '" + tokenValue
-                                    + "' does NOT match the reserved eval property pattern. Extracted filter properties: "
+                            LOG.trace("buildPropertyCriterion: PARTICIPATION_EXPRESSION token value '" + tokenValue
+                                    + "' does NOT match the reserved eval expression pattern. Extracted filter properties: "
                                     + Arrays.toString(filterPrps));
                         }
                     }
                 } else if (type == QueryTemplateTokenPojo.TokenType.AND) {
                     repeatConnector = " "+this.config.getTargetReservedWordAnd()+" ";
-                    if (anyPropertyBefore) {
+                    if (anyParticipationBefore) {
                         currentConnector = " "+this.config.getTargetReservedWordAnd()+" ";
                         if (LOG.isTraceEnabled()) {
                             LOG.trace(
@@ -1375,9 +1399,14 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                                     "buildPropertyCriterion: AND token found. Not changing currentConnector because there is NO property/criterion participating before. `properties`: " + filterPrpsStr);
                         }
                     }
+                } else if (type == QueryTemplateTokenPojo.TokenType.PRINT_ONLY) {
+                    printOnlyOutput.setValue(true);
+                    if (LOG.isTraceEnabled()) {
+                        LOG.trace("buildPropertyCriterion: PRINT_ONLY token found. Setting printOnly to true.");
+                    }
                 } else if (type == QueryTemplateTokenPojo.TokenType.OR) {
                     repeatConnector = " "+this.config.getTargetReservedWordOr()+" ";
-                    if (anyPropertyBefore) {
+                    if (anyParticipationBefore) {
                         currentConnector = " "+this.config.getTargetReservedWordOr()+" ";
                         if (LOG.isTraceEnabled()) {
                             LOG.trace(
@@ -1426,12 +1455,11 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                             Object evalResult = state.getEvalRunner().eval(state, evalPrps);
                             if (evalResult == null) {
                                 cumulativePrpsParticipates = false;
-                            } else {                                
+                            } else {
                                 cumulativePrpsParticipates = (boolean) evalResult;
                             }
                             if (LOG.isTraceEnabled()) {
-                                LOG.trace("buildPropertyCriterion: Evaluated expression '" + evalPrps
-                                        + "' with result: " + cumulativePrpsParticipates);
+                                LOG.trace("buildPropertyCriterion: Evaluated expression '" + evalPrps + "' with result: " + cumulativePrpsParticipates);
                             }
                         } catch (Throwable e) {
                             throw new QueryTemplateException("Error evaluating expression: '" + evalPrps + "'", e);
@@ -1439,14 +1467,14 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                     } else {
                         boolean anyInsteadOfAll = false;
                         if (filterPrps.length == 0) {
-                            throw new QueryTemplateException("'" + QueryTemplateTokenPojo.TokenType.PARAMETER
+                            throw new QueryTemplateException("'" + QueryTemplateTokenPojo.TokenType.PARTICIPATION_EXPRESSION
                                     + "' not defined. Before: '" + this.queryTextTokens.get(indexOutput.getValue()).getValue() + "'");
                         }
                         Pattern rxReservedAnyReplacer = Pattern.compile(this.config.getReservedAnyProperty());
                         Pattern rxReservedAnyMatcher = Pattern.compile(" *" + this.config.getReservedAnyProperty() + ".*");
                         if (rxReservedAnyMatcher.matcher(filterPrps[0]).matches()) {
                             anyInsteadOfAll = true;
-                            filterPrps[0] = rxReservedAnyReplacer.matcher(filterPrps[0]).replaceAll("").trim();
+                            filterPrps[0] = rxReservedAnyReplacer.matcher(filterPrps[0]).replaceAll("").trim();                            
                             
                             //criterionMappers can not be populated here because the property names are not known when eval is used. The property names will be known from parameters found into the criterion.
                             if (LOG.isTraceEnabled()) {
@@ -1551,7 +1579,7 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                                         this.queryTextTokens.get(indexOutput.getValue()).getValue(), state);
                             }
                             
-                            propertyParticipatesOutput.setValue(true);
+                            participatesOutput.setValue(true);
                         } else if (type == QueryTemplateTokenPojo.TokenType.QUERY_HELPER) {
                             if (repeatTokenActive) {
                                 throw new QueryTemplateException(String.format(
@@ -1561,7 +1589,7 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                                         this.config.getRepeatToken().toString()));
                             }
                             criterionPrp = this.buildQueryHelper(filter, this.queryTextTokens.get(indexOutput.getValue()));
-                            propertyParticipatesOutput.setValue(true);
+                            participatesOutput.setValue(true);
                         } else if (type == QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS) {
                             if (repeatTokenActive) {
                                 throw new QueryTemplateException(String.format(
@@ -1575,21 +1603,23 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                             if (LOG.isTraceEnabled()) {
                                 LOG.trace("buildPropertyCriterion: OPEN_PARENTHESIS token found. Including if current property/criterion participates in the query.");
                             }
-                            OutputParam<Boolean> anyPropertyParenthesis = new OutputParam<Boolean>(false);
-                            criterionPrp = this.buildParenthesisCriterion(indexOutput, currentConnector,
-                                    anyPropertyParenthesis, filter, state);
+                            OutputParam<Boolean> anyParticipationParenthesis = new OutputParam<Boolean>(false);
+                            criterionPrp = this.buildParenthesisCriterion(indexOutput, printOnlyOutput.value, currentConnector,
+                                    anyParticipationParenthesis, 
+                                    //anyPrintOnlyParenthesis, 
+                                    filter, state);
                             
-                            if (anyPropertyParenthesis.getValue()) {
-                                propertyParticipatesOutput.setValue(true);
+                            if (anyParticipationParenthesis.getValue()) {
+                                participatesOutput.setValue(true);
                                 if (LOG.isTraceEnabled()) {
                                     LOG.trace(
-                                            "buildPropertyCriterion: Parenthesis criterion has inner participating property/criterion. Setting propertyParticipatesOutput to true.");
+                                            "buildPropertyCriterion: Parenthesis criterion has inner participating property/criterion. Setting participatesOutput to true.");
                                 }
                             } else {
-                                propertyParticipatesOutput.setValue(false);
+                                participatesOutput.setValue(false);
                                 if (LOG.isTraceEnabled()) {
                                     LOG.trace(
-                                            "buildPropertyCriterion: Parenthesis criterion has NO inner participating property/criterion. Setting propertyParticipatesOutput to false.");
+                                            "buildPropertyCriterion: Parenthesis criterion has NO inner participating property/criterion. Setting participatesOutput to false.");
                                 }
                             }
                         } else {
@@ -1597,14 +1627,22 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                                     this.tokenExceptionMessage(indexOutput.getValue(), this.queryTextTokens, "UNEXPECTED TOKEN"));
                         }
 
-                        if (propertyParticipatesOutput.getValue()) {
-                            if (type != QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS) {
-                                queryTextMod.append(currentConnector);    
+                        //if (participatesOutput.getValue() || printOnlyOutput.getValue()) { // Here appears to be a mistake.
+                        if (participatesOutput.getValue()) {
+                            if (type != QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS) { // buildParenthesisCriterion() already appends the currentConnector if necessary.
+                                if (!printOnlyOutput.getValue()) {
+                                    queryTextMod.append(currentConnector + " ");
+                                } else {
+                                    if (LOG.isTraceEnabled()) {
+                                        LOG.trace(
+                                                "buildPropertyCriterion: printOnly is true. Not appending currentConnector to queryTextMod. currentConnector: '" + currentConnector + "'");
+                                    }
+                                }
                             }
-                            queryTextMod.append(criterionPrp).append(" ");                                
-                            // Mistake: This has no effect, because the currentConnector is not used anymore after this point, `break` is used just after this point. The currentConnector is used only in the next iteration of the loop, but the loop will break immediately after this point, so the currentConnector is not used anymore.  
-                            //currentConnector = " "+this.config.getTargetReservedWordAnd()+" ";
                         }
+                        queryTextMod.append(criterionPrp).append(" ");
+                        // Mistake: This has no effect, because the currentConnector is not used anymore after this point, `break` is used just after this point. The currentConnector is used only in the next iteration of the loop, but the loop will break immediately after this point, so the currentConnector is not used anymore.  
+                        //currentConnector = " "+this.config.getTargetReservedWordAnd()+" ";
                     } else {
                         if (LOG.isTraceEnabled()) {
                             LOG.trace(
@@ -1612,14 +1650,16 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                                             + filterPrpsStr + ". Not appending any criterion to queryTextMod.");
                         }
                         if (type == QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS) {
-                            OutputParam<Boolean> anyPropertyParenthesis = new OutputParam<Boolean>(false);
-                            String dummyParenthesisCriterion = this.buildParenthesisCriterion(indexOutput, currentConnector,
-                                    anyPropertyParenthesis, filter, state);
-                            if (!anyPropertyParenthesis.getValue()) {
-                                if (LOG.isTraceEnabled()) {
+                            OutputParam<Boolean> anyParticipationParenthesis = new OutputParam<Boolean>(false);
+                            String dummyParenthesisCriterion = this.buildParenthesisCriterion(indexOutput, printOnlyOutput.getValue(),
+                                currentConnector, anyParticipationParenthesis, 
+                                //anyPrintOnlyParenthesis, 
+                                filter, state);
+                            if (LOG.isTraceEnabled()) {
                                     LOG.trace(
-                                            "buildPropertyCriterion: Dummy Parenthesis assembled just to move the indexOutput forward after closing parenthesis.");
-                                }
+                                            "buildPropertyCriterion: Dummy Parenthesis assembled just to move the indexOutput forward after closing parenthesis. "
+                                            + "Dummy criterion: '" + dummyParenthesisCriterion + "'. anyParticipationParenthesis: "
+                                                    + anyParticipationParenthesis.getValue());
                             }
                         }
                     }
@@ -1645,10 +1685,21 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
         }
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("buildPropertyCriterion: Finished building parameter criterion. propertyParticipatesOutput: "
-                    + propertyParticipatesOutput.getValue()+ "\n. "
+            LOG.debug("buildPropertyCriterion: Finished building parameter criterion. participatesOutput: "
+                    + participatesOutput.getValue()+ "\n. "
                     + "Final queryTextMod: "
                     + queryTextMod.toString());
+        }
+        
+        if (printOnlyOutput.getValue()) {
+            //printOnlyOutput.setValue(printOnlyOutput.getValue() || participatesOutput.getValue());
+            Boolean originalParticipatesOutput = participatesOutput.getValue();
+            participatesOutput.setValue(false);
+            if (LOG.isTraceEnabled()) {
+                LOG.trace("buildPropertyCriterion: printOnly is true. "
+                        + "Setting participatesOutput to false. "
+                        + "Original participatesOutput was: " + originalParticipatesOutput);
+            }
         }
         
         return queryTextMod.toString();
@@ -1658,15 +1709,20 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
      * Handles the part inside a parenthesis. If no inner part is included, the
      * parentheses are not included either.
      */
-    private String buildParenthesisCriterion(OutputParam<Integer> indexOutput, String currentConnector,
-            OutputParam<Boolean> anyPropertyParenthesisOutput, F filter, 
-            QueryTemplateStateInternal<Q, F> state) {
+    private String buildParenthesisCriterion(OutputParam<Integer> indexOutput, boolean printOnly, String currentConnector,
+            OutputParam<Boolean> anyParticipationParenthesisOutput,
+            F filter,
+            QueryTemplateStateInternal<Q, F> state) {        
         if (LOG.isDebugEnabled()) {
             LOG.debug("buildParenthesisCriterion: Starting to build parenthesis criterion. Current indexOutput: " + indexOutput.getValue());
         }
         
         StringBuilder queryTextMod = new StringBuilder();
-        anyPropertyParenthesisOutput.setValue(false);
+        anyParticipationParenthesisOutput.setValue(false);
+        //anyPrintOnlyParenthesisOutput.setValue(false);
+        boolean printOnlyParenthesis = false;
+        //List<OutputParam<Boolean>> anyParticipationMultiplesFiltersTokenList = new ArrayList<>();
+        //anyParticipationMultiplesFiltersTokenList.add(currentAnyPropertyParenthesisOutput);
         String innerParenthesisConnector = "  ";
 
         while (true) {
@@ -1679,8 +1735,23 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
 
             if (indexOutput.getValue() < this.queryTextTokens.size() && this.queryTextTokens.get(indexOutput.getValue()) != null) {
                 QueryTemplateTokenPojo.TokenType type = this.queryTextTokens.get(indexOutput.getValue()).getType();
-                if (type == QueryTemplateTokenPojo.TokenType.AND) {
-                    if (anyPropertyParenthesisOutput.getValue()) {
+                // # region Multiple Filters Token Handling
+                //TODO: CONTINUAR AQUI
+                if (type == QueryTemplateTokenPojo.TokenType.FILTERS) {
+                    //currentAnyPropertyParenthesisOutput = new OutputParam<Boolean>(false);
+                    //anyParticipationMultiplesFiltersTokenList.add(currentAnyPropertyParenthesisOutput);
+                    innerParenthesisConnector = " "+this.config.getTargetReservedWordAnd()+" ";
+                    if (LOG.isTraceEnabled()) {
+                        LOG.trace("buildParenthesisCriterion: Resetting anyParticipation to false and connector to AND (Dafault) for FILTERS token.");
+                    }
+                } else if (type == QueryTemplateTokenPojo.TokenType.WHERE) {
+                    innerParenthesisConnector = " "+this.config.getTargetReservedWordWhere()+" ";
+                    if (LOG.isTraceEnabled()) {
+                        LOG.trace("buildParenthesisCriterion: Setting connector to WHERE for WHERE token.");
+                    }
+                // #endregion
+                } else if (type == QueryTemplateTokenPojo.TokenType.AND) {
+                    if (anyParticipationParenthesisOutput.getValue()) {
                         innerParenthesisConnector = " "+this.config.getTargetReservedWordAnd()+" ";
                         if (LOG.isTraceEnabled()) {
                             LOG.trace(
@@ -1693,7 +1764,7 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                         }
                     }
                 } else if (type == QueryTemplateTokenPojo.TokenType.OR) {
-                    if (anyPropertyParenthesisOutput.getValue()) {
+                    if (anyParticipationParenthesisOutput.getValue()) {
                         innerParenthesisConnector = " "+this.config.getTargetReservedWordOr()+" ";
                         if (LOG.isTraceEnabled()) {
                             LOG.trace(
@@ -1711,49 +1782,75 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                         LOG.trace(
                                 "buildParenthesisCriterion: NO_OPERATOR token found. Setting innerParenthesisConnector to empty (double space).");
                     }
+                } else if (type == QueryTemplateTokenPojo.TokenType.PRINT_ONLY) {
+                    printOnlyParenthesis = true;
+                    if (LOG.isTraceEnabled()) {
+                        LOG.trace("buildParenthesisCriterion: PRINT_ONLY token found. Setting printOnly to true.");
+                    }
                 } else if (type == QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS) {
                     if (LOG.isTraceEnabled()) {
                         LOG.trace("buildParenthesisCriterion: OPEN_PARENTHESIS token found. Recursively processing inner parenthesis.");
                     }
-                    OutputParam<Boolean> anyPropertySubParenthesis = new OutputParam<Boolean>(false);
-                    queryTextMod.append(this.buildParenthesisCriterion(indexOutput, innerParenthesisConnector,
-                            anyPropertySubParenthesis, filter, state));
+                    OutputParam<Boolean> anyParticipationSubParenthesis = new OutputParam<Boolean>(false);
+                    queryTextMod.append(this.buildParenthesisCriterion(indexOutput, printOnlyParenthesis,
+                            innerParenthesisConnector, 
+                            anyParticipationSubParenthesis,
+                            //anyPrintOnlySubParenthesis, 
+                            filter, state));
                     if (LOG.isTraceEnabled()) {
-                        if (anyPropertySubParenthesis.getValue()) {
+                        if (anyParticipationSubParenthesis.getValue()) {
                             LOG.trace(
-                                    "buildParenthesisCriterion: Inner Parenthesis has participating property/criterion. Setting anyPropertyParenthesisOutput to true and next inner connector to AND (Default).");
+                                    "buildParenthesisCriterion: Inner Parenthesis has participating property/criterion. Setting anyParticipationParenthesisOutput to true and next inner connector to AND (Default).");
                         } else {
                             LOG.trace(
-                                    "buildParenthesisCriterion: Inner Parenthesis criterion has NO participating property/criterion. anyPropertyParenthesisOutput remains "
-                                            + anyPropertyParenthesisOutput);
+                                    "buildParenthesisCriterion: Inner Parenthesis criterion has NO participating property/criterion. anyParticipationParenthesisOutput remains "
+                                            + anyParticipationParenthesisOutput);
                         }
                     }
-                    anyPropertyParenthesisOutput.setValue(anyPropertyParenthesisOutput.getValue() || anyPropertySubParenthesis.getValue());
-                    if (anyPropertyParenthesisOutput.getValue()) {
+                    anyParticipationParenthesisOutput.setValue(anyParticipationParenthesisOutput.getValue() || anyParticipationSubParenthesis.getValue());
+                    //anyPrintOnlyParenthesisOutput.setValue(anyPrintOnlyParenthesisOutput.getValue()
+                    //        || anyPrintOnlySubParenthesis.getValue());
+                    if (anyParticipationParenthesisOutput.getValue()) {
                         innerParenthesisConnector = " "+this.config.getTargetReservedWordAnd()+" ";
                         //   There is no need to check if the current connector is the firts one (AND, OR, NO_OPERATOR, etc.), 
                         // because here we are setting only the default connector for the next connector 
                         // property/criterion after the parenthesis, which is AND.
                     }
-                } else if (type == QueryTemplateTokenPojo.TokenType.PARAMETER) {
-                    OutputParam<Boolean> propertyParticipatesOutput = new OutputParam<Boolean>(false);
-                    queryTextMod.append(this.buildPropertyCriterion(indexOutput, innerParenthesisConnector,
-                            propertyParticipatesOutput, anyPropertyParenthesisOutput.getValue(), filter, state));                    
+                } else if (type == QueryTemplateTokenPojo.TokenType.PARTICIPATION_EXPRESSION) {
+                    OutputParam<Boolean> participatesOutput = new OutputParam<Boolean>(false);
+                    OutputParam<Boolean> printOnlyOutput = new OutputParam<Boolean>(false);
+                    String propertyCriterion = this.buildParticipationExpressionCriterion(indexOutput, innerParenthesisConnector,
+                            participatesOutput, printOnlyOutput, anyParticipationParenthesisOutput.getValue(), filter, state);
+                    queryTextMod.append(propertyCriterion);
+                    //anyPrintOnlyParenthesisOutput.setValue(anyPrintOnlyParenthesisOutput.getValue()
+                    //        || printOnlyOutput.getValue());
                     
-                    anyPropertyParenthesisOutput.setValue(anyPropertyParenthesisOutput.getValue() || propertyParticipatesOutput.getValue());
-                    if (anyPropertyParenthesisOutput.getValue()) {
+                    anyParticipationParenthesisOutput.setValue(anyParticipationParenthesisOutput.getValue() || participatesOutput.getValue());
+                    if (anyParticipationParenthesisOutput.getValue()) {
                         innerParenthesisConnector = " "+this.config.getTargetReservedWordAnd()+" ";
                     }
                     if (LOG.isTraceEnabled()) {
                         LOG.trace(
-                                "buildParenthesisCriterion: Processed PARAMETER token. Appended parameter criterion to queryTextMod. Updated indexOutput: "
-                                        + indexOutput.getValue() + ". propertyParticipatesOutput: "
-                                        + propertyParticipatesOutput.getValue() + ". anyPropertyParenthesisOutput: " 
-                                        + anyPropertyParenthesisOutput.getValue() + ". Next inner connector set to AND (Default) for the next inner property/criterion.");
+                                "buildParenthesisCriterion: Processed PARTICIPATION_EXPRESSION token. Appended parameter criterion to queryTextMod. Updated indexOutput: "
+                                        + indexOutput.getValue() + ". participatesOutput: "
+                                        + participatesOutput.getValue() + ". anyParticipationParenthesisOutput: " 
+                                        + anyParticipationParenthesisOutput.getValue() + ". Next inner connector set to AND (Default) for the next inner property/criterion.");
                     }
                 } else if (type == QueryTemplateTokenPojo.TokenType.CLOSE_PARENTHESIS) {
-                    if (anyPropertyParenthesisOutput.getValue()) {
-                        queryTextMod = new StringBuilder(currentConnector + " "+this.config.getTargetReservedWordOpenParenthesis()+" " + queryTextMod + " "+this.config.getTargetReservedWordCloseParenthesis()+" ");
+                    if (anyParticipationParenthesisOutput.getValue()) {
+                        if (!printOnly) {
+                            queryTextMod = new StringBuilder(currentConnector + " "+this.config.getTargetReservedWordOpenParenthesis()+" " + queryTextMod + " "+this.config.getTargetReservedWordCloseParenthesis()+" ");
+                        } else {
+                            queryTextMod = new StringBuilder(this.config.getTargetReservedWordOpenParenthesis()+" " + queryTextMod + " "+this.config.getTargetReservedWordCloseParenthesis()+" ");
+                            //Here we need to set anyParticipationParenthesisOutput to false, because the parenthesis is not participating in the query, because it is printOnly. This is important for the parenthesis that contains this one, if any.
+                            anyParticipationParenthesisOutput.setValue(false);
+                            if (LOG.isTraceEnabled()) {
+                                LOG.trace(
+                                        "buildParenthesisCriterion: printOnly is true. Not prepending currentConnector to queryTextMod. "
+                                        + "Changing anyParticipationParenthesisOutput to false because the parenthesis is not participating in the query. "
+                                        + "currentConnector: '" + currentConnector + "'");
+                            }
+                        }
                         if (LOG.isTraceEnabled()) {
                             LOG.trace(
                                     "buildParenthesisCriterion: CLOSE_PARENTHESIS token found. There is some property/criterion participating in the parenthesis. Wrapping queryTextMod with parentheses and prepending currentConnector.");
@@ -1842,6 +1939,11 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("buildTokens: Token matches NO_OPERATOR token pattern.");
                 }
+            } else if (this.config.getPrintOnlyToken().matcher(tokenStr).find()) {
+                tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.PRINT_ONLY, tokenStr, start));
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("buildTokens: Token matches PRINT_ONLY token pattern.");
+                }
             } else if (this.config.getRepeatToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.REPEAT, tokenStr, start));
                 if (LOG.isTraceEnabled()) {
@@ -1864,34 +1966,34 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                 }
             } else if (this.config.getQueryHelperToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.QUERY_HELPER,
-                        this.config.getPropertiesDelimiterToken().matcher(tokenStr).replaceAll(""), start));
+                        this.config.getParticipationExpressionDelimiterToken().matcher(tokenStr).replaceAll(""), start));
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("buildTokens: Token matches QUERY_HELPER token pattern.");
                 }
-            } else if (this.config.getPropertiesToken().matcher(tokenStr).find()) {
+            } else if (this.config.getParticipationExpressionToken().matcher(tokenStr).find()) {
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("buildTokens: Token matches PROPERTIES token pattern. Extracting property names and validating existence of corresponding mappers.");
                 }
-                QueryTemplateTokenPojo token = new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.PARAMETER,
-                        this.config.getPropertiesDelimiterToken().matcher(tokenStr).replaceAll(""), start);
+                QueryTemplateTokenPojo token = new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.PARTICIPATION_EXPRESSION,
+                        this.config.getParticipationExpressionDelimiterToken().matcher(tokenStr).replaceAll(""), start);
                 tokens.add(token);
                 Pattern rxReservedEvalMatcher = Pattern.compile("(?s)\\s*" + this.config.getReservedEvalProperty() + ".*");
                 if (rxReservedEvalMatcher.matcher(token.getValue()).matches()) {
                     //nothing?!
 //                    if (LOG.isTraceEnabled()) {
-//                        LOG.trace("buildTokens: PARAMETER token value '" + token.getValue()
+//                        LOG.trace("buildTokens: PARTICIPATION_EXPRESSION token value '" + token.getValue()
 //                                + "' matches the eval property pattern ('"+this.config.getReservedEvalProperty() 
 //                                + "'). No mappers are added to usableMappers.");
 //                    }
                 } else {
 //                    if (LOG.isTraceEnabled()) {
-//                        LOG.trace("buildTokens: PARAMETER token value '" + token.getValue()
+//                        LOG.trace("buildTokens: PARTICIPATION_EXPRESSION token value '" + token.getValue()
 //                                + "' does NOT match the eval property pattern ('"
 //                                + this.config.getReservedEvalProperty()
 //                                + "'). Extracting property names and adding corresponding mappers to usableMappers.");
 //                    }
                     if (LOG.isTraceEnabled()) {
-                        LOG.trace("buildTokens: Extracting property names from PARAMETER token value '"
+                        LOG.trace("buildTokens: Extracting property names from PARTICIPATION_EXPRESSION token value '"
                                 + token.getValue() + "' to validate existence of corresponding mappers.");
                     }
                     // Storing the parameter in the list of possible parameters.

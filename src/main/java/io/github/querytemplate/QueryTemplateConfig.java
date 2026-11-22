@@ -36,10 +36,41 @@ public interface QueryTemplateConfig<Q, F> {
      * Token meaning that the filter clause will have no operator (and, or). Value: <code>"\\[no_operator\\]"</code>.
      */
     String NO_OPERATOR_TOKEN = "\\[no_operator\\]";
+    /**
+     * Value: <code>"\\[print_only\\]"</code>.<br>
+     * <p>Marks a criterion as print-only. Place it after a <b><code>participation expression</code></b> and before
+     * the criterion, for example <b><code>[property][print_only][-- comment]</code></b>. If the property
+     * participates, its text is included without a preceding connector and does not affect
+     * connector selection for subsequent criteria. Inside a parenthesis block, if only
+     * print-only criteria participate, their text is rendered and the surrounding parentheses
+     * are omitted.<br>
+     *
+     * <p><b>Before a parenthesis block</b>:<br>
+     * {@code [print_only]} may also precede a parenthesis block. In that case the block is
+     * rendered when any inner criterion participates, but it emits no preceding connector
+     * and does not affect connector selection for subsequent criteria. If every participating
+     * participation expression inside the block is itself marked {@code [print_only]}, the
+     * enclosing parentheses are omitted while the inner content is still rendered.
+     * This is not a recommended use.<br>
+     */
+    String PRINT_ONLY_TOKEN = "\\[print_only\\]";
     /** 
      * Opening parenthesis. Value: <code>"\\[\\(\\]"</code>.
      */
     String OPEN_PARENTHESIS_TOKEN = "\\[\\(\\]";
+//    /**
+//     * Opening parenthesis that will be hidden in the resulting query. Value:
+//     * <code>"\\[$hidden$\\(\\]"</code>.<br>
+//     * It represents a non literal parenthesis, that is, it will be used to 
+//     * group criteria but surrounding parenthesis will not be included in 
+//     * the resulting query.<br>
+//     * It is particularly useful when this token is preceded by a property participation clause
+//     * to act as an {@code if} to all inner  all inner properties/criteria, so if 
+//     * the property/criterion that precedes the hidden parenthesis does not participate, 
+//     * all inner properties/criteria and static content will not be rendered in the 
+//     * resulting query.<br>
+//     */
+//    String OPEN_HIDDEN_PARENTHESIS_TOKEN = "\\[$hidden$\\(\\]";
     /** 
      * Closing parenthesis. Value: <code>"\\[\\)\\]"</code>.
      */
@@ -56,7 +87,7 @@ public interface QueryTemplateConfig<Q, F> {
     String RESERVED_ANY_PROPERTY = "\\$any\\$";
     
     /**
-     * Use the reserved word '$eval$' at the beginning of the properties
+     * Use the reserved word '$eval$' at the beginning of the participation expression
      * to consider the criterion eligible for inclusion in the query in case the expression return <code>true</code>.<br>
      * The expression can use the filter properties values as inner fields of <code>prpValues</code> or <code>pv</code> script variable, like <code>prpValues.propertyName</code>.<br>
      * The the result of `participation tests` can be used as boolean inner fields of <code>prpParticipations</code> or <code>pp</code> script variable, like <code>prpParticipation.propertyName</code>.<br>  
@@ -67,21 +98,27 @@ public interface QueryTemplateConfig<Q, F> {
     String RESERVED_EVAL_PROPERTY = "\\$eval\\$";
     
     /**
-     * Token with the names of the properties separated by
-     * comma, surrounded by the parameter delimiters. All the properties must be
-     * participating in the query (or not participating if preceded by "!")
-     * for the criterion to be included.<br>
+        * Token with participation expression.<br>
+     * Example: {@code [property1, property2, !property3]}; 
+     * {@code [$eval$ prpValues.property1 > 10]};
+        * {@code [$any$ property1, property2]}; etc.<br>
+        * The names of the properties are separated by commas and surrounded by the
+        * parameter delimiters. All properties must participate in the query (or not
+        * participate if preceded by "!") for the criterion to be included.<br>
+        * Use {@code [print_only]} as a separate token after the participation expression when
+        * the criterion text should not affect subsequent connector selection.<br>
      * Value: <code>"(\\[\\s*!?\\b[\\w-]+\\b(\\s*,\\s*!?\\b[\\w-]+\\b){0,300}\\s*\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])"</code>.<br>
-     * The value of {@link #getPropertiesToken()} is <code>Pattern.compile(String.format(QueryTemplateConfig.PROPERTIES_TOKEN, this.getReservedAnyProperty(), this.getReservedEvalProperty()))</code> 
+        * The value of {@link #getParticipationExpressionToken()} is
+        * <code>Pattern.compile(String.format(QueryTemplateConfig.PARTICIPATION_EXPRESSION_TOKEN, this.getReservedAnyProperty(), this.getReservedEvalProperty()))</code>.
      */
-    String PROPERTIES_TOKEN = "(\\[\\s*!?\\b[\\w-]+\\b(\\s*,\\s*!?\\b[\\w-]+\\b){0,300}\\s*\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])";
+    String PARTICIPATION_EXPRESSION_TOKEN = "(\\[\\s*!?\\b[\\w-]+\\b(\\s*,\\s*!?\\b[\\w-]+\\b){0,300}\\s*\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])";
     
     /** Repeats the sentence once for each element in the array. */
     String REPEAT_TOKEN = "\\[repeat\\]";
     /** Default token for the criterion. */
     String CRITERION_TOKEN = "\\[[^\\]]*\\]";
-    /** Default regular expression to remove the properties and criterion delimiters. */
-    String PROPERTIES_DELIMITER_TOKEN = "\\[|\\]";
+    /** Default regular expression to remove the participation expression delimiters. */
+    String PARTICIPATION_EXPRESSION_DELIMITER_TOKEN = "\\[|\\]";
     /** Default regular expression to remove the criterion delimiters. */
     String CRITERION_DELIMITER_TOKEN = "\\[|\\]";
     /** Reused query, supports QueryTemplate "helpers". */
@@ -394,13 +431,13 @@ public interface QueryTemplateConfig<Q, F> {
     QueryTemplateConfig<Q, F> whereToken(String whereToken);
 
     /**
-     * Sets the properties token pattern. See {@link #PROPERTIES_TOKEN} for the
+     * Sets the participation expression token pattern. See {@link #PARTICIPATION_EXPRESSION_TOKEN} for the
      * default value.
      * 
-     * @param propertiesToken the properties token pattern.
+     * @param participationExpressionToken the participation expression token pattern.
      * @return This instance for method chaining.
      */
-    QueryTemplateConfig<Q, F> propertiesToken(String propertiesToken);
+    QueryTemplateConfig<Q, F> participationExpressionToken(String participationExpressionToken);
     
     /**
      * Sets the repeat token pattern. See {@link #REPEAT_TOKEN} for the default
@@ -482,12 +519,12 @@ public interface QueryTemplateConfig<Q, F> {
     
     /**
      * Sets the parameter delimiter token pattern. See
-     * {@link #PROPERTIES_DELIMITER_TOKEN} for the default value.
+     * {@link #PARTICIPATION_EXPRESSION_DELIMITER_TOKEN} for the default value.
      * 
-     * @param propertiesDelimiterToken the parameter delimiter token pattern.
+     * @param participationExpressionToken the parameter delimiter token pattern.
      * @return This instance for method chaining.
      */
-    QueryTemplateConfig<Q, F> propertiesDelimiterToken(String propertiesDelimiterToken);
+    QueryTemplateConfig<Q, F> participationExpressionDelimiterToken(String participationExpressionToken);
 
     /**
      * Sets the criterion delimiter token pattern. See
@@ -508,7 +545,8 @@ public interface QueryTemplateConfig<Q, F> {
     QueryTemplateConfig<Q, F> escapeCharacter(String escapeCharacter);
     
     /**
-     * Sets the reserved word for `any` property markers. See
+     * Sets the reserved word for `any` participation expression markers.
+     *  See
      * {@link #RESERVED_ANY_PROPERTY} for the default value.
      * 
      * @param reservedAnyProperty the reserved word for `any` parameter markers.
@@ -517,7 +555,17 @@ public interface QueryTemplateConfig<Q, F> {
     QueryTemplateConfig<Q, F> reservedAnyProperty(String reservedAnyProperty);
     
     /**
-     * Sets the reserved word for `eval` property markers. See
+     * Sets the {@code print_only} token pattern. See
+     * {@link #PRINT_ONLY_TOKEN} for the default value.
+     * 
+     * @param printOnlyToken the reserved word for `print_only` parameter
+     *                          markers.
+     * @return This instance for method chaining.
+     */
+    QueryTemplateConfig<Q, F> printOnlyToken(String printOnlyToken);
+    
+    /**
+     * Sets the reserved word for `eval` participation expression markers. See
      * {@link #RESERVED_EVAL_PROPERTY} for the default value.
      * 
      * @param reservedEvalProperty the reserved word for `eval` parameter markers.
@@ -703,11 +751,11 @@ public interface QueryTemplateConfig<Q, F> {
     Pattern getCriterionToken();
 
     /**
-     * Gets the properties delimiter token pattern. See {@link #PROPERTIES_DELIMITER_TOKEN} for the default value.
+     * Gets the properties delimiter token pattern. See {@link #PARTICIPATION_EXPRESSION_DELIMITER_TOKEN} for the default value.
      * 
      * @return the criterion token pattern.
      */
-    Pattern getPropertiesDelimiterToken();
+    Pattern getParticipationExpressionDelimiterToken();
 
     /**
      * Gets the criterion delimiter token pattern. See {@link #CRITERION_DELIMITER_TOKEN} for the default value.
@@ -752,11 +800,11 @@ public interface QueryTemplateConfig<Q, F> {
     Pattern getWhereToken();
 
     /**
-     * Gets the properties token pattern. See {@link #PROPERTIES_TOKEN} for the default value.
+     * Gets the participation expression token pattern. See {@link #PARTICIPATION_EXPRESSION_TOKEN} for the default value.
      * 
-     * @return the properties token pattern.
+     * @return the participation expression token pattern.
      */
-    Pattern getPropertiesToken();
+    Pattern getParticipationExpressionToken();
 
     /**
      * Gets the repeat token pattern. See {@link #REPEAT_TOKEN} for the default value.
@@ -773,14 +821,20 @@ public interface QueryTemplateConfig<Q, F> {
     Pattern getQueryHelperToken();
 
     /**
-     * Gets the reserved word for `any` property markers. See {@link #RESERVED_ANY_PROPERTY} for the default value.
+     * Gets the reserved word for `any` participation expression markers. See {@link #RESERVED_ANY_PROPERTY} for the default value.
      * 
      * @return the reserved word for `any` parameter markers.
      */
     String getReservedAnyProperty();
     
     /**
-     * Gets the reserved word for `eval` property markers. See
+     * Gets the {@code print_only} token pattern. See {@link #PRINT_ONLY_TOKEN} for the default value.
+     * @return
+     */
+    Pattern getPrintOnlyToken();
+    
+    /**
+     * Gets the reserved word for `eval` participation expression markers. See
      * {@link #RESERVED_EVAL_PROPERTY} for the default value.
      * 
      * @return the reserved word for `eval` parameter markers.

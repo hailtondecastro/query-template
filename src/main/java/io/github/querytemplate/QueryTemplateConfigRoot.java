@@ -37,11 +37,12 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     Pattern closeParenthesisToken = Pattern.compile(QueryTemplateConfig.CLOSE_PARENTHESIS_TOKEN);
     Pattern extraToken = Pattern.compile(QueryTemplateConfig.EXTRA_TOKEN);
     String reservedAnyProperty = QueryTemplateConfig.RESERVED_ANY_PROPERTY;
+    Pattern printOnlyToken = Pattern.compile(QueryTemplateConfig.PRINT_ONLY_TOKEN);
     String reservedEvalProperty = QueryTemplateConfig.RESERVED_EVAL_PROPERTY;
-    Pattern propertiesToken = Pattern.compile(String.format(QueryTemplateConfig.PROPERTIES_TOKEN, this.getReservedAnyProperty(), this.getReservedEvalProperty()));
+	Pattern participationExpressionToken = Pattern.compile(String.format(QueryTemplateConfig.PARTICIPATION_EXPRESSION_TOKEN, this.getReservedAnyProperty(), this.getReservedEvalProperty()));
     Pattern repeatToken = Pattern.compile(QueryTemplateConfig.REPEAT_TOKEN);
     Pattern criterionToken = Pattern.compile(QueryTemplateConfig.CRITERION_TOKEN);
-    Pattern propertiesDelimiterToken = Pattern.compile(QueryTemplateConfig.PROPERTIES_DELIMITER_TOKEN);
+    Pattern participationExpressionDelimiterToken = Pattern.compile(QueryTemplateConfig.PARTICIPATION_EXPRESSION_DELIMITER_TOKEN);
     Pattern criterionDelimiterToken = Pattern.compile(QueryTemplateConfig.CRITERION_DELIMITER_TOKEN);
     Pattern queryHelperToken = Pattern.compile(QueryTemplateConfig.QUERY_HELPER_TOKEN);
     String escapeCharacter = QueryTemplateConfig.ESCAPE_CHARACTER;
@@ -267,8 +268,8 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     }
     
     @Override
-    public QueryTemplateConfig<Q, F> propertiesToken(String propertiesToken) {
-        this.propertiesToken = Pattern.compile(propertiesToken);
+    public QueryTemplateConfig<Q, F> participationExpressionToken(String participationExpressionToken) {
+        this.participationExpressionToken = Pattern.compile(participationExpressionToken);
         return this;
     }
     
@@ -327,8 +328,8 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     }
     
     @Override
-    public QueryTemplateConfig<Q, F> propertiesDelimiterToken(String propertiesDelimiterToken) {
-        this.propertiesDelimiterToken = Pattern.compile(propertiesDelimiterToken);
+    public QueryTemplateConfig<Q, F> participationExpressionDelimiterToken(String participationExpressionDelimiterToken) {
+        this.participationExpressionDelimiterToken = Pattern.compile(participationExpressionDelimiterToken);
         return this;
     }
     
@@ -349,6 +350,13 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
         this.reservedAnyProperty = reservedAnyProperty;
         return this;
     }
+    
+    @Override
+    public QueryTemplateConfig<Q, F> printOnlyToken(String printOnlyToken) {
+        this.printOnlyToken = Pattern.compile(printOnlyToken);
+        return this;
+    }
+    
     
     @Override
     public QueryTemplateConfig<Q, F> reservedEvalProperty(String reservedEvalProperty) {
@@ -463,8 +471,8 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     }
 
     @Override
-    public Pattern getPropertiesDelimiterToken() {
-        return propertiesDelimiterToken;
+    public Pattern getParticipationExpressionDelimiterToken() {
+        return participationExpressionDelimiterToken;
     }
 
     @Override
@@ -498,8 +506,8 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     }
 
     @Override
-    public Pattern getPropertiesToken() {
-        return propertiesToken;
+    public Pattern getParticipationExpressionToken() {
+        return participationExpressionToken;
     }
 
     @Override
@@ -515,6 +523,11 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     @Override
     public String getReservedAnyProperty() {
         return reservedAnyProperty;
+    }
+    
+    @Override
+    public Pattern getPrintOnlyToken() {
+        return this.printOnlyToken;
     }
     
     @Override

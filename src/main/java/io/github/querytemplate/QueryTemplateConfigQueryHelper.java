@@ -230,8 +230,8 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
     }
     
     @Override
-    public QueryTemplateConfig<Q, F> propertiesToken(String propertiesToken) {
-        this.parent.propertiesToken(propertiesToken);
+    public QueryTemplateConfig<Q, F> participationExpressionToken(String participationExpressionToken) {
+        this.parent.participationExpressionToken(participationExpressionToken);
         return this;
     }
 
@@ -248,8 +248,8 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
     }
 
     @Override
-    public QueryTemplateConfig<Q, F> propertiesDelimiterToken(String propertiesDelimiterToken) {
-        this.parent.propertiesDelimiterToken(propertiesDelimiterToken);
+    public QueryTemplateConfig<Q, F> participationExpressionDelimiterToken(String participationExpressionDelimiterToken) {
+        this.parent.participationExpressionDelimiterToken(participationExpressionDelimiterToken);
         return this;
     }
 
@@ -276,7 +276,13 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
         this.parent.reservedEvalProperty(reservedEvalProperty);
         return this;
     }
-
+    
+    @Override
+    public QueryTemplateConfig<Q, F> printOnlyToken(String printOnlyToken) {
+        this.parent.printOnlyToken(printOnlyToken);
+        return this;
+    }
+    
     @Override
     public QueryTemplateConfig<Q, F> escapeCharacter(String escapeCharacter) {
         this.parent.escapeCharacter(escapeCharacter);
@@ -353,8 +359,8 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
     }
 
     @Override
-    public Pattern getPropertiesDelimiterToken() {
-        return this.parent.getPropertiesDelimiterToken();
+    public Pattern getParticipationExpressionDelimiterToken() {
+        return this.parent.getParticipationExpressionDelimiterToken();
     }
 
     @Override
@@ -383,8 +389,8 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
     }
 
     @Override
-    public Pattern getPropertiesToken() {
-        return this.parent.getPropertiesToken();
+    public Pattern getParticipationExpressionToken() {
+        return this.parent.getParticipationExpressionToken();
     }
 
     @Override
@@ -405,6 +411,11 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
     @Override
     public String getReservedEvalProperty() {
         return this.parent.getReservedEvalProperty();
+    }
+    
+    @Override
+    public Pattern getPrintOnlyToken() {
+        return this.parent.getPrintOnlyToken();
     }
 
     @Override
