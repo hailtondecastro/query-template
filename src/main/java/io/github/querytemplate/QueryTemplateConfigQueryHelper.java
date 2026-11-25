@@ -216,10 +216,22 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
         this.parent.openParenthesisToken(openParenthesisToken);
         return this;
     }
+    
+    @Override
+    public QueryTemplateConfig<Q, F> openBlockToken(String openBlockToken) {
+        this.parent.openBlockToken(openBlockToken);
+        return this;
+    }
 
     @Override
     public QueryTemplateConfig<Q, F> closeParenthesisToken(String closeParenthesisToken) {
         this.parent.closeParenthesisToken(closeParenthesisToken);
+        return this;
+    }
+    
+    @Override
+    public QueryTemplateConfig<Q, F> closeBlockToken(String closeBlockToken) {
+        this.parent.closeBlockToken(closeBlockToken);
         return this;
     }
 
@@ -342,10 +354,20 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
     public Pattern getOpenParenthesisToken() {
         return this.parent.getOpenParenthesisToken();
     }
+    
+    @Override
+    public Pattern getOpenBlockToken() {
+        return this.parent.getOpenBlockToken();        
+    }
 
     @Override
     public Pattern getCloseParenthesisToken() {
         return this.parent.getCloseParenthesisToken();
+    }
+    
+    @Override
+    public Pattern getCloseBlockToken() {
+        return this.parent.getCloseBlockToken();
     }
 
     @Override

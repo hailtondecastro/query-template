@@ -806,6 +806,18 @@ public class QueryTemplateTest {
     }
     
     @Test
+    public void buildQueryWithBlock() {
+        this.buildQueryWithParenthesisBase(
+                s -> s
+                    .replace("[(]", "[{]")
+                    .replace("[)]", "[}]")
+                    .replace("\\(\\s*", "") 
+                    .replace("\\s*\\)", ""),
+                Function.identity()
+        );
+    }
+    
+    @Test
     public void buildQueryWithParenthesisIfParticipates() {
         this.buildQueryWithParenthesisBase(
                 s -> s

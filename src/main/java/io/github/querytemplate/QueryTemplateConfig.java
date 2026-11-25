@@ -58,6 +58,11 @@ public interface QueryTemplateConfig<Q, F> {
      * Opening parenthesis. Value: <code>"\\[\\(\\]"</code>.
      */
     String OPEN_PARENTHESIS_TOKEN = "\\[\\(\\]";
+    /**
+     * Opening block. Value: <code>"\\[\\{\\]"</code>. Like {@link #OPEN_PARENTHESIS_TOKEN} but used for blocks of criteria that are not necessarily grouped by parentheses, like a block of criteria that will be rendered inside a subquery. Inner content will not be surrounded by parentheses, 
+     * braces or any other character. It is useful when the query template is used to build a subquery, for example, where the inner content will be rendered inside a subquery that already has its own parentheses. 
+     */
+    String OPEN_BLOCK_TOKEN = "\\[\\{\\]";
 //    /**
 //     * Opening parenthesis that will be hidden in the resulting query. Value:
 //     * <code>"\\[$hidden$\\(\\]"</code>.<br>
@@ -75,6 +80,10 @@ public interface QueryTemplateConfig<Q, F> {
      * Closing parenthesis. Value: <code>"\\[\\)\\]"</code>.
      */
     String CLOSE_PARENTHESIS_TOKEN = "\\[\\)\\]";
+    /**
+     * Closing block. Value: <code>"\\[\\}\\]"</code>.
+     */
+    String CLOSE_BLOCK_TOKEN = "\\[\\}\\]";
     /** 
      * Default token for the reserved word "extra". Value: <code>"\\[extra\\]"</code>.
      */
@@ -98,18 +107,18 @@ public interface QueryTemplateConfig<Q, F> {
     String RESERVED_EVAL_PROPERTY = "\\$eval\\$";
     
     /**
-        * Token with participation expression.<br>
+     * Token with participation expression.<br>
      * Example: {@code [property1, property2, !property3]}; 
      * {@code [$eval$ prpValues.property1 > 10]};
-        * {@code [$any$ property1, property2]}; etc.<br>
-        * The names of the properties are separated by commas and surrounded by the
-        * parameter delimiters. All properties must participate in the query (or not
-        * participate if preceded by "!") for the criterion to be included.<br>
-        * Use {@code [print_only]} as a separate token after the participation expression when
-        * the criterion text should not affect subsequent connector selection.<br>
+     * {@code [$any$ property1, property2]}; etc.<br>
+     * The names of the properties are separated by commas and surrounded by the
+     * parameter delimiters. All properties must participate in the query (or not
+     * participate if preceded by "!") for the criterion to be included.<br>
+     * Use {@code [print_only]} as a separate token after the participation expression when
+     * the criterion text should not affect subsequent connector selection.<br>
      * Value: <code>"(\\[\\s*!?\\b[\\w-]+\\b(\\s*,\\s*!?\\b[\\w-]+\\b){0,300}\\s*\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])"</code>.<br>
-        * The value of {@link #getParticipationExpressionToken()} is
-        * <code>Pattern.compile(String.format(QueryTemplateConfig.PARTICIPATION_EXPRESSION_TOKEN, this.getReservedAnyProperty(), this.getReservedEvalProperty()))</code>.
+     * The value of {@link #getParticipationExpressionToken()} is
+     * <code>Pattern.compile(String.format(QueryTemplateConfig.PARTICIPATION_EXPRESSION_TOKEN, this.getReservedAnyProperty(), this.getReservedEvalProperty()))</code>.
      */
     String PARTICIPATION_EXPRESSION_TOKEN = "(\\[\\s*!?\\b[\\w-]+\\b(\\s*,\\s*!?\\b[\\w-]+\\b){0,300}\\s*\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])";
     
@@ -490,6 +499,15 @@ public interface QueryTemplateConfig<Q, F> {
      * @return This instance for method chaining.
      */
     QueryTemplateConfig<Q, F> openParenthesisToken(String openParenthesisToken);
+    
+    /**
+     * Sets the open block token pattern. See {@link #OPEN_BLOCK_TOKEN} for the
+     * default value.
+     * 
+     * @param openBlockToken the open block token pattern.
+     * @return This instance for method chaining.
+     */
+    QueryTemplateConfig<Q, F> openBlockToken(String openBlockToken);
 
     /**
      * Sets the close parenthesis token pattern. See
@@ -499,6 +517,15 @@ public interface QueryTemplateConfig<Q, F> {
      * @return This instance for method chaining.
      */
     QueryTemplateConfig<Q, F> closeParenthesisToken(String closeParenthesisToken);
+    
+    /**
+     * Sets the close block token pattern. See {@link #CLOSE_BLOCK_TOKEN} for the
+     * default value.
+     * 
+     * @param closeBlockToken the close block token pattern.
+     * @return This instance for method chaining.
+     */
+    QueryTemplateConfig<Q, F> closeBlockToken(String closeBlockToken);
 
     /**
      * Sets the extra token pattern. See {@link #EXTRA_TOKEN} for the default value.
@@ -728,13 +755,29 @@ public interface QueryTemplateConfig<Q, F> {
      * @return the open parenthesis token pattern.
      */
     Pattern getOpenParenthesisToken();
-
+    
+    /**
+     * Gets the open block token pattern. See {@link #OPEN_BLOCK_TOKEN} for the
+     * default value.
+     * 
+     * @return the open block token pattern.
+     */
+    Pattern getOpenBlockToken();
+    
     /**
      * Gets the close parenthesis token pattern. See {@link #CLOSE_PARENTHESIS_TOKEN} for the default value.
      * 
      * @return the close parenthesis token pattern.
      */
     Pattern getCloseParenthesisToken();
+    
+    /**
+     * Gets the close block token pattern. See {@link #CLOSE_BLOCK_TOKEN} for the
+     * default value.
+     * 
+     * @return the close block token pattern.
+     */
+    Pattern getCloseBlockToken();
 
     /**
      * Gets the extra token pattern. See {@link #EXTRA_TOKEN} for the default value.
@@ -829,7 +872,7 @@ public interface QueryTemplateConfig<Q, F> {
     
     /**
      * Gets the {@code print_only} token pattern. See {@link #PRINT_ONLY_TOKEN} for the default value.
-     * @return
+     * @return the {@code print_only} token pattern.
      */
     Pattern getPrintOnlyToken();
     

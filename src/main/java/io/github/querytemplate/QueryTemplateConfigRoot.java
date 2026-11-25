@@ -34,7 +34,9 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     Pattern orToken = Pattern.compile(QueryTemplateConfig.OR_TOKEN);
     Pattern noOperatorToken = Pattern.compile(QueryTemplateConfig.NO_OPERATOR_TOKEN);
     Pattern openParenthesisToken = Pattern.compile(QueryTemplateConfig.OPEN_PARENTHESIS_TOKEN);
+    Pattern openBlockToken = Pattern.compile(QueryTemplateConfig.OPEN_BLOCK_TOKEN);
     Pattern closeParenthesisToken = Pattern.compile(QueryTemplateConfig.CLOSE_PARENTHESIS_TOKEN);
+    Pattern closeBlockToken = Pattern.compile(QueryTemplateConfig.CLOSE_BLOCK_TOKEN);
     Pattern extraToken = Pattern.compile(QueryTemplateConfig.EXTRA_TOKEN);
     String reservedAnyProperty = QueryTemplateConfig.RESERVED_ANY_PROPERTY;
     Pattern printOnlyToken = Pattern.compile(QueryTemplateConfig.PRINT_ONLY_TOKEN);
@@ -310,8 +312,20 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     }
     
     @Override
+    public QueryTemplateConfig<Q, F> openBlockToken(String openBlockToken) {
+        this.openBlockToken = Pattern.compile(openBlockToken);
+        return this;
+    }
+    
+    @Override
     public QueryTemplateConfig<Q, F> closeParenthesisToken(String closeParenthesisToken) {
         this.closeParenthesisToken = Pattern.compile(closeParenthesisToken);
+        return this;
+    }
+    
+    @Override
+    public QueryTemplateConfig<Q, F> closeBlockToken(String closeBlockToken) {
+        this.closeBlockToken = Pattern.compile(closeBlockToken);
         return this;
     }
     
@@ -454,10 +468,20 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     public Pattern getOpenParenthesisToken() {
         return openParenthesisToken;
     }
+    
+    @Override
+    public Pattern getOpenBlockToken() {
+        return openBlockToken;
+    }
 
     @Override
     public Pattern getCloseParenthesisToken() {
         return closeParenthesisToken;
+    }
+    
+    @Override
+    public Pattern getCloseBlockToken() {
+        return closeBlockToken;
     }
 
     @Override
