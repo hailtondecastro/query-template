@@ -296,6 +296,12 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
     }
     
     @Override
+    public QueryTemplateConfig<Q, F> ifToken(String ifToken) {
+        this.parent.ifToken(ifToken);
+        return this;
+    }
+    
+    @Override
     public QueryTemplateConfig<Q, F> escapeCharacter(String escapeCharacter) {
         this.parent.escapeCharacter(escapeCharacter);
         return this;
@@ -440,6 +446,11 @@ public class QueryTemplateConfigQueryHelper<Q, F> implements QueryTemplateConfig
         return this.parent.getPrintOnlyToken();
     }
 
+    @Override
+    public Pattern getIfToken() {
+        return this.parent.getIfToken();
+    }
+    
     @Override
     public String getTargetReservedWordAnd() {
         return this.parent.getTargetReservedWordAnd();

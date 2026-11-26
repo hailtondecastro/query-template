@@ -39,6 +39,7 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     Pattern closeBlockToken = Pattern.compile(QueryTemplateConfig.CLOSE_BLOCK_TOKEN);
     Pattern extraToken = Pattern.compile(QueryTemplateConfig.EXTRA_TOKEN);
     String reservedAnyProperty = QueryTemplateConfig.RESERVED_ANY_PROPERTY;
+    Pattern ifToken = Pattern.compile(QueryTemplateConfig.IF_TOKEN);
     Pattern printOnlyToken = Pattern.compile(QueryTemplateConfig.PRINT_ONLY_TOKEN);
     String reservedEvalProperty = QueryTemplateConfig.RESERVED_EVAL_PROPERTY;
 	Pattern participationExpressionToken = Pattern.compile(String.format(QueryTemplateConfig.PARTICIPATION_EXPRESSION_TOKEN, this.getReservedAnyProperty(), this.getReservedEvalProperty()));
@@ -371,6 +372,11 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
         return this;
     }
     
+    @Override
+    public QueryTemplateConfig<Q, F> ifToken(String ifToken) {
+        this.ifToken = Pattern.compile(ifToken);
+        return this;
+    }
     
     @Override
     public QueryTemplateConfig<Q, F> reservedEvalProperty(String reservedEvalProperty) {
@@ -552,6 +558,11 @@ public class QueryTemplateConfigRoot<Q, F> implements QueryTemplateConfig<Q, F> 
     @Override
     public Pattern getPrintOnlyToken() {
         return this.printOnlyToken;
+    }
+    
+    @Override
+    public Pattern getIfToken() {
+        return this.ifToken;
     }
     
     @Override

@@ -20,6 +20,7 @@ class QueryTemplateTokenPojo {
         CLOSE_PARENTHESIS,
         CLOSE_BLOCK,
         EXTRA,
+        IF,
         PARTICIPATION_EXPRESSION,
         REPEAT,
         CRITERION,

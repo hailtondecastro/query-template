@@ -121,7 +121,13 @@ public interface QueryTemplateConfig<Q, F> {
      * <code>Pattern.compile(String.format(QueryTemplateConfig.PARTICIPATION_EXPRESSION_TOKEN, this.getReservedAnyProperty(), this.getReservedEvalProperty()))</code>.
      */
     String PARTICIPATION_EXPRESSION_TOKEN = "(\\[\\s*!?\\b[\\w-]+\\b(\\s*,\\s*!?\\b[\\w-]+\\b){0,300}\\s*\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])|(\\[\\s{0,2000}%s[^\\]]{0,2000}\\])";
-    
+    /**
+     * Token for the reserved word "if". Value: <code>"\\[if\\]"</code>.<br>
+     * 
+     * <p>This token can only apear before participation expressions, like {@code [if][property1, property2]} or {@code [if][$eval$ prpValues.property1 > 10]}.<br>
+     * In real, this has no practical effect, it is only used to make the query template more readable, so it is optional and can be omitted, like {@code [property1, property2]} or {@code [$eval$ prpValues.property1 > 10]}.
+     */
+    String IF_TOKEN = "\\[if\\]";        
     /** Repeats the sentence once for each element in the array. */
     String REPEAT_TOKEN = "\\[repeat\\]";
     /** Default token for the criterion. */
@@ -592,6 +598,15 @@ public interface QueryTemplateConfig<Q, F> {
     QueryTemplateConfig<Q, F> printOnlyToken(String printOnlyToken);
     
     /**
+     * Sets the {@code if} token pattern. See {@link #IF_TOKEN} for the default
+     * value.
+     * 
+     * @param ifToken the reserved word for `if` parameter markers.
+     * @return This instance for method chaining.
+     */
+    QueryTemplateConfig<Q, F> ifToken(String ifToken);
+    
+    /**
      * Sets the reserved word for `eval` participation expression markers. See
      * {@link #RESERVED_EVAL_PROPERTY} for the default value.
      * 
@@ -877,10 +892,18 @@ public interface QueryTemplateConfig<Q, F> {
     Pattern getPrintOnlyToken();
     
     /**
-     * Gets the reserved word for `eval` participation expression markers. See
+     * Gets the {@code if} token pattern. See {@link #IF_TOKEN} for the default
+     * value.
+     * 
+     * @return the {@code if} token pattern.
+     */
+    Pattern getIfToken();
+    
+    /**
+     * Gets the reserved word for <code>eval</code> participation expression markers. See
      * {@link #RESERVED_EVAL_PROPERTY} for the default value.
      * 
-     * @return the reserved word for `eval` parameter markers.
+     * @return the reserved word for <code>eval</code> parameter markers.
      */
     String getReservedEvalProperty();
 

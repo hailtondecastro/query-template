@@ -806,6 +806,15 @@ public class QueryTemplateTest {
     }
     
     @Test
+    public void buildQueryWithParenthesisIf() {
+        this.buildQueryWithParenthesisBase(
+                s -> s
+                    .replace(" [filterPrp", "[if][filterPrp"),
+                Function.identity()
+        );
+    }
+    
+    @Test
     public void buildQueryWithBlock() {
         this.buildQueryWithParenthesisBase(
                 s -> s

@@ -121,7 +121,7 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
         this.splitterIntoPartsPattern = "(?s)" + this.config.getFiltersToken() + "|" + this.config.getWhereToken() + "|" + this.config.getAndToken() + "|" + this.config.getOrToken()
                 + "|" + this.config.getNoOperatorToken() + "|" + this.config.getPrintOnlyToken() + "|" + this.config.getRepeatToken() + "|" + this.config.getOpenParenthesisToken() + "|"
                 + this.config.getOpenBlockToken() + "|" + this.config.getCloseParenthesisToken() + "|" + this.config.getCloseBlockToken() + "|" + this.config.getExtraToken() + "|"
-                + this.config.getParticipationExpressionToken() + "|" + this.config.getCriterionToken();
+                + this.config.getIfToken() + "|" + this.config.getParticipationExpressionToken() + "|" + this.config.getCriterionToken();
         Pattern pt = Pattern.compile(this.splitterIntoPartsPattern);
 
         Map<String, String> escapeMap = new LinkedHashMap<>();
@@ -916,6 +916,18 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                     if (LOG.isTraceEnabled()) {
                         LOG.trace("buildQueryState: PRINT_ONLY token found. Setting printOnly to true.");
                     }
+                } else if (type == QueryTemplateTokenPojo.TokenType.IF) {
+                    if (i + 1 >= this.queryTextTokens.size() || this.queryTextTokens
+                            .get(i + 1).getType() != QueryTemplateTokenPojo.TokenType.PARTICIPATION_EXPRESSION) {
+                        throw new QueryTemplateException(
+                                QueryTemplateTokenPojo.TokenType.PARTICIPATION_EXPRESSION + " Expected\n"
+                                        + this.tokenExceptionMessage(Math.min(i, this.queryTextTokens.size() - 1),
+                                                this.queryTextTokens, "UNEXPECTED TOKEN (AFTER)"));
+                    }
+                    if (LOG.isTraceEnabled()) {
+                        LOG.trace(
+                                "buildQueryState: IF token found. Forwarding to the next token to process PARTICIPATION_EXPRESSION.");
+                    }
                 } else if (type == QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS 
                         || type == QueryTemplateTokenPojo.TokenType.OPEN_BLOCK) {
                     OutputParam<Integer> indexOutput =  new OutputParam<Integer>(i);
@@ -1409,6 +1421,19 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                     if (LOG.isTraceEnabled()) {
                         LOG.trace("buildPropertyCriterion: PRINT_ONLY token found. Setting printOnly to true.");
                     }
+//                // IF TOKEN can not appear here
+//                } else if (type == QueryTemplateTokenPojo.TokenType.IF) {
+//                    if (i + 1 >= this.queryTextTokens.size() || this.queryTextTokens
+//                            .get(i + 1).getType() != QueryTemplateTokenPojo.TokenType.PARTICIPATION_EXPRESSION) {
+//                        throw new QueryTemplateException(
+//                                QueryTemplateTokenPojo.TokenType.PARTICIPATION_EXPRESSION + " Expected\n"
+//                                        + this.tokenExceptionMessage(Math.min(i, this.queryTextTokens.size() - 1),
+//                                                this.queryTextTokens, "UNEXPECTED TOKEN (AFTER)"));
+//                    }
+//                    if (LOG.isTraceEnabled()) {
+//                        LOG.trace(
+//                                "buildPropertyCriterion: IF token found. Forwarding to the next token to process PARTICIPATION_EXPRESSION.");
+//                    }
                 } else if (type == QueryTemplateTokenPojo.TokenType.OR) {
                     repeatConnector = " "+this.config.getTargetReservedWordOr()+" ";
                     if (anyParticipationBefore) {
@@ -1810,6 +1835,20 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                     if (LOG.isTraceEnabled()) {
                         LOG.trace("buildParenthesisCriterion: PRINT_ONLY token found. Setting printOnly to true.");
                     }
+                } else if (type == QueryTemplateTokenPojo.TokenType.IF) {
+                    if (indexOutput.getValue() + 1 >= this.queryTextTokens.size()
+                            || this.queryTextTokens.get(indexOutput.getValue() + 1)
+                                    .getType() != QueryTemplateTokenPojo.TokenType.PARTICIPATION_EXPRESSION) {
+                        throw new QueryTemplateException(
+                                QueryTemplateTokenPojo.TokenType.PARTICIPATION_EXPRESSION + " Expected\n"
+                                        + this.tokenExceptionMessage(
+                                                Math.min(indexOutput.getValue(), this.queryTextTokens.size() - 1),
+                                                this.queryTextTokens, "UNEXPECTED TOKEN (AFTER)"));
+                    }
+                    if (LOG.isTraceEnabled()) {
+                        LOG.trace(
+                                "buildParenthesisCriterion: IF token found. Forwarding to the next token to process PARTICIPATION_EXPRESSION.");
+                    }
                 } else if (type == QueryTemplateTokenPojo.TokenType.OPEN_PARENTHESIS
                         || type == QueryTemplateTokenPojo.TokenType.OPEN_BLOCK) {
                     if (LOG.isTraceEnabled()) {
@@ -2007,6 +2046,11 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("buildTokens: Token matches PRINT_ONLY token pattern.");
                 }
+            } else if (this.config.getIfToken().matcher(tokenStr).find()) {
+                tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.IF, tokenStr, start));
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("buildTokens: Token matches IF token pattern.");
+                }
             } else if (this.config.getRepeatToken().matcher(tokenStr).find()) {
                 tokens.add(new QueryTemplateTokenPojo(QueryTemplateTokenPojo.TokenType.REPEAT, tokenStr, start));
                 if (LOG.isTraceEnabled()) {
@@ -2042,7 +2086,7 @@ class QueryTemplateDefault<Q, F> implements QueryTemplateInternal<Q, F> {
                         this.config.getParticipationExpressionDelimiterToken().matcher(tokenStr).replaceAll(""), start));
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("buildTokens: Token matches QUERY_HELPER token pattern.");
-                }
+                }                
             } else if (this.config.getParticipationExpressionToken().matcher(tokenStr).find()) {
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("buildTokens: Token matches PROPERTIES token pattern. Extracting property names and validating existence of corresponding mappers.");
